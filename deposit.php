@@ -108,54 +108,86 @@ $conn->close();
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>EdTech UniverseID - Link Manager</title>
     <style>
+        :root {
+            --primary: #4361ee;
+            --primary-dark: #3a56d4;
+            --success: #4caf50;
+            --error: #f44336;
+            --text: #333;
+            --text-light: #666;
+            --bg: #f5f7fa;
+            --card-bg: #fff;
+            --border: #e1e4e8;
+        }
+
         body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            max-width: 800px;
-            margin: 0 auto;
-            padding: 20px;
+            font-family: 'Segoe UI', -apple-system, BlinkMacSystemFont, sans-serif;
+            background-color: var(--bg);
+            max-width: 700px;
+            margin: 40px auto;
+            padding: 0 20px;
             line-height: 1.6;
-            color: #333;
+            color: var(--text);
         }
 
         .container {
-            background: #f9f9f9;
+            background-color: var(--card-bg);
             padding: 30px;
-            border-radius: 8px;
-            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+            border-radius: 12px;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.05);
         }
 
-        h1,
-        h2 {
-            color: #2c3e50;
+        h1 {
+            color: var(--primary);
             margin-top: 0;
+            margin-bottom: 30px;
+            font-size: 26px;
+            text-align: center;
+        }
+
+        h2 {
+            font-size: 20px;
+            margin-top: 10px;
+            margin-bottom: 20px;
+            color: var(--text);
         }
 
         label {
-            font-weight: 600;
+            font-weight: 500;
             display: block;
-            margin-bottom: 5px;
+            margin-bottom: 8px;
+            color: var(--text);
         }
 
         select,
         input,
         textarea {
             width: 100%;
-            padding: 10px;
-            margin-bottom: 15px;
-            border: 1px solid #ddd;
-            border-radius: 4px;
+            padding: 12px;
+            border: 1px solid var(--border);
+            border-radius: 6px;
             box-sizing: border-box;
             font-family: inherit;
+            font-size: 15px;
+            transition: border 0.2s;
+        }
+
+        select:focus,
+        input:focus,
+        textarea:focus {
+            border-color: var(--primary);
+            outline: none;
+            box-shadow: 0 0 0 3px rgba(67, 97, 238, 0.15);
         }
 
         .input-group {
-            margin-bottom: 20px;
+            margin-bottom: 24px;
         }
 
         .checkbox-group {
             display: flex;
             align-items: center;
-            margin-bottom: 15px;
+            margin-bottom: 24px;
         }
 
         .checkbox-group input {
@@ -168,94 +200,94 @@ $conn->close();
             font-weight: normal;
         }
 
-        .prefix-stats {
-            font-size: 12px;
-            color: #666;
-            margin-left: 5px;
-        }
-
         .form-tip {
             font-size: 13px;
-            color: #666;
-            margin-top: 5px;
+            color: var(--text-light);
+            margin-top: 6px;
         }
 
         button {
-            background-color: #3498db;
+            background-color: var(--primary);
             color: white;
             border: none;
-            padding: 12px 20px;
-            border-radius: 4px;
+            padding: 12px 24px;
+            border-radius: 6px;
             cursor: pointer;
             font-size: 16px;
-            transition: background 0.3s;
+            font-weight: 500;
+            transition: all 0.2s;
+            width: 100%;
         }
 
         button:hover {
-            background-color: #2980b9;
+            background-color: var(--primary-dark);
+            transform: translateY(-1px);
         }
 
         .success-message {
-            background-color: #d4edda;
-            color: #155724;
-            padding: 15px;
-            border-radius: 4px;
-            margin-bottom: 20px;
+            background-color: var(--success);
+            color: white;
+            padding: 20px;
+            border-radius: 6px;
+            margin-bottom: 25px;
             text-align: center;
         }
 
+        .success-message a {
+            color: white;
+            text-decoration: underline;
+        }
+
         .error-message {
-            background-color: #f8d7da;
-            color: #721c24;
-            padding: 15px;
-            border-radius: 4px;
-            margin-bottom: 20px;
+            background-color: var(--error);
+            color: white;
+            padding: 20px;
+            border-radius: 6px;
+            margin-bottom: 25px;
             text-align: center;
         }
 
         .preview-box {
-            background: #e9f7fe;
-            padding: 15px;
-            border-radius: 4px;
-            margin: 20px 0;
+            background: rgba(67, 97, 238, 0.1);
+            padding: 18px;
+            border-radius: 6px;
+            margin: 25px 0;
             display: none;
+            border-left: 3px solid var(--primary);
         }
 
         .preview-box h3 {
             margin-top: 0;
             font-size: 16px;
+            color: var(--primary);
         }
 
         footer {
             text-align: center;
-            margin-top: 30px;
+            margin-top: 40px;
             font-size: 13px;
-            color: #666;
+            color: var(--text-light);
         }
     </style>
 </head>
 
 <body>
     <div class="container">
-        <h1>EdTech UniverseID Link Manager</h1>
+        <h1>Teknologi Pendidikan Resource Identifier</h1>
 
         <?php if ($submission_success): ?>
             <div class="success-message">
-                <p>✅ DOI
-                    <strong><?php echo htmlspecialchars($created_prefix) . '/' . htmlspecialchars($created_suffix); ?></strong>
-                    added
-                    successfully!
+                <p>✓ Link created successfully!</p>
+                <p><strong><?php echo htmlspecialchars($created_prefix) . '/' . htmlspecialchars($created_suffix); ?></strong>
                 </p>
-                <p>Link: <a
-                        href="https://<?php echo $_SERVER['HTTP_HOST']; ?>/<?php echo htmlspecialchars($created_prefix) . '/' . htmlspecialchars($created_suffix); ?>"
+                <p><a href="https://<?php echo $_SERVER['HTTP_HOST']; ?>/<?php echo htmlspecialchars($created_prefix) . '/' . htmlspecialchars($created_suffix); ?>"
                         target="_blank">
-                        https://<?php echo $_SERVER['HTTP_HOST']; ?>/<?php echo htmlspecialchars($created_prefix) . '/' . htmlspecialchars($created_suffix); ?>
+                        Open link in new tab
                     </a></p>
             </div>
         <?php elseif ($_SERVER["REQUEST_METHOD"] === "POST" && isset($suffix) && $_POST['auto_generate'] !== "on" && !is_suffix_unique($prefix, $suffix, $conn)): ?>
             <div class="error-message">
-                <p>❌ Suffix <strong><?php echo htmlspecialchars($prefix) . '/' . htmlspecialchars($suffix); ?></strong>
-                    already exists. Please choose another suffix.</p>
+                <p>This identifier already exists. Please choose another suffix.</p>
             </div>
         <?php endif; ?>
 
@@ -263,83 +295,86 @@ $conn->close();
 
         <form method="POST">
             <div class="input-group">
-                <label for="prefix">Prefix:</label>
+                <label for="prefix">Category</label>
                 <select name="prefix" id="prefix" required>
-                    <option value="">-- Select a prefix --</option>
+                    <option value="">-- Select a category --</option>
                     <?php foreach ($prefixes as $prefix): ?>
                         <option value="<?php echo htmlspecialchars($prefix['prefix']); ?>">
-                            <?php echo htmlspecialchars($prefix['prefix']) . ' - ' . htmlspecialchars($prefix['name']); ?>
-                            <?php echo isset($prefix_counts[$prefix['prefix']]) ? "({$prefix_counts[$prefix['prefix']]} links)" : "(0 links)"; ?>
+                            <?php echo htmlspecialchars($prefix['name']); ?>
+                            <?php echo isset($prefix_counts[$prefix['prefix']]) ? "({$prefix_counts[$prefix['prefix']]})" : "(0)"; ?>
                         </option>
                     <?php endforeach; ?>
                 </select>
-                <div class="form-tip">Choose a category for your link</div>
-            </div>
-
-            <div class="input-group">
-                <label for="suffix">Suffix:</label>
-                <input type="text" name="suffix" id="suffix"
-                    placeholder="E.g., journal-2025 (leave empty to auto-generate)" style="width: 100%;"
-                    pattern="[a-zA-Z0-9\-_]+" title="Only letters, numbers, hyphens and underscores allowed">
-                <div class="form-tip">Use a meaningful name or leave empty for auto-generation</div>
             </div>
 
             <div class="checkbox-group">
-                <input type="checkbox" name="auto_generate" id="auto_generate">
-                <label for="auto_generate">Auto-generate suffix (recommended for most users)</label>
+                <input type="checkbox" name="auto_generate" id="auto_generate" checked>
+                <label for="auto_generate">Auto-generate link ID (recommended)</label>
+            </div>
+
+            <div class="input-group" id="suffix-group">
+                <label for="suffix">Custom ID (optional)</label>
+                <input type="text" name="suffix" id="suffix" placeholder="e.g., my-resource-2025"
+                    pattern="[a-zA-Z0-9\-_]+" title="Only letters, numbers, hyphens and underscores allowed" disabled>
+                <div class="form-tip">Letters, numbers, hyphens and underscores only</div>
             </div>
 
             <div class="input-group">
-                <label for="target_url">Target URL:</label>
+                <label for="target_url">Target URL</label>
                 <input type="url" name="target_url" id="target_url" required
                     placeholder="https://example.com/your-page">
-                <div class="form-tip">The destination URL where users will be redirected</div>
             </div>
 
             <div class="input-group">
-                <label for="title">Title:</label>
-                <input type="text" name="title" id="title" placeholder="Enter a descriptive title">
-                <div class="form-tip">A short, descriptive title for this resource</div>
+                <label for="title">Title</label>
+                <input type="text" name="title" id="title" placeholder="Enter a title for this resource">
             </div>
 
             <div class="input-group">
-                <label for="description">Description:</label>
+                <label for="description">Description (optional)</label>
                 <textarea name="description" id="description" rows="3"
-                    placeholder="Enter a brief description"></textarea>
-                <div class="form-tip">Optional description for your own reference</div>
+                    placeholder="Brief description of this resource"></textarea>
             </div>
 
             <div class="preview-box" id="preview">
-                <h3>Preview</h3>
-                <p><strong>URL:</strong> <span
-                        id="preview-url">https://<?php echo $_SERVER['HTTP_HOST']; ?>/prefix/suffix</span></p>
-                <p><strong>Title:</strong> <span id="preview-title">Your resource title</span></p>
+                <h3>Link Preview</h3>
+                <p><strong><?php echo $_SERVER['HTTP_HOST']; ?>/<span id="preview-prefix">category</span>/<span
+                            id="preview-suffix">id</span></strong></p>
+                <p id="preview-title">Resource title will appear here</p>
             </div>
 
-            <button type="submit">Create Link</button>
+            <button type="submit">Create Identifier </button>
         </form>
     </div>
 
     <footer>
-        <p>EdTech UniverseID Backoffice | &copy; <?php echo date('Y'); ?> Teknologi Pendidikan</p>
+        <p>DPTSI | &copy; <?php echo date('Y'); ?> Teknologi Pendidikan ID</p>
     </footer>
 
     <script>
         // Toggle suffix field based on auto-generate checkbox
         document.getElementById('auto_generate').addEventListener('change', function () {
             const suffixField = document.getElementById('suffix');
+            const suffixGroup = document.getElementById('suffix-group');
+
             suffixField.disabled = this.checked;
-            suffixField.required = !this.checked;
+
             if (this.checked) {
-                suffixField.setAttribute('placeholder', 'Will be auto-generated');
+                suffixGroup.style.opacity = '0.7';
+                suffixField.setAttribute('placeholder', 'Auto-generated ID will be used');
             } else {
-                suffixField.setAttribute('placeholder', 'E.g., journal-2025');
+                suffixGroup.style.opacity = '1';
+                suffixField.setAttribute('placeholder', 'e.g., my-resource-2025');
+                suffixField.focus();
             }
+
+            updatePreview();
         });
 
         // Live preview
         const previewBox = document.getElementById('preview');
-        const previewUrl = document.getElementById('preview-url');
+        const previewPrefix = document.getElementById('preview-prefix');
+        const previewSuffix = document.getElementById('preview-suffix');
         const previewTitle = document.getElementById('preview-title');
         const prefixSelect = document.getElementById('prefix');
         const suffixInput = document.getElementById('suffix');
@@ -347,14 +382,19 @@ $conn->close();
         const autoGenerate = document.getElementById('auto_generate');
 
         function updatePreview() {
-            const prefix = prefixSelect.value || 'prefix';
-            let suffix = suffixInput.value || 'suffix';
+            const selectedOption = prefixSelect.options[prefixSelect.selectedIndex];
+            const prefixName = selectedOption.text.split(' - ')[0] || 'category';
+            let prefix = prefixSelect.value || 'category';
+            let suffix = suffixInput.value || 'id';
+
             if (autoGenerate.checked) {
                 suffix = 'auto-generated';
             }
-            const title = titleInput.value || 'Your resource title';
 
-            previewUrl.textContent = 'https://' + window.location.host + '/' + prefix + '/' + suffix;
+            const title = titleInput.value || 'Resource title will appear here';
+
+            previewPrefix.textContent = prefix;
+            previewSuffix.textContent = suffix;
             previewTitle.textContent = title;
 
             if (prefixSelect.value || suffixInput.value || titleInput.value) {
@@ -367,7 +407,9 @@ $conn->close();
         prefixSelect.addEventListener('change', updatePreview);
         suffixInput.addEventListener('input', updatePreview);
         titleInput.addEventListener('input', updatePreview);
-        autoGenerate.addEventListener('change', updatePreview);
+
+        // Initialize state
+        document.getElementById('auto_generate').dispatchEvent(new Event('change'));
     </script>
 </body>
 
