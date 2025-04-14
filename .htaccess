@@ -10,6 +10,9 @@ RewriteRule ^$ https://teknologipendidikan.or.id/ [R=302,QSA,L]
 # Access to deposit form
 RewriteRule ^deposit/?$ deposit.php [L]
 
+# Access to listing of identifiers
+RewriteRule ^list/?$ list.php [L]
+
 # API access via /api/edtechid.100/example
 RewriteRule ^api/(edtechid\.[0-9]+)/(.+)$ api.php?id=$1/$2 [L]
 

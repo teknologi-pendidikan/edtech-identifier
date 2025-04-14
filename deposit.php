@@ -349,6 +349,7 @@ $conn->close();
 
     <footer>
         <p>DPTSI | &copy; <?php echo date('Y'); ?> Teknologi Pendidikan ID</p>
+        <p><a href="list" style="color: var(--primary);">View all resource links</a></p>
     </footer>
 
     <script>
