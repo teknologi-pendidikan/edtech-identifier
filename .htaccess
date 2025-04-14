@@ -12,6 +12,11 @@ ErrorDocument 503 /error.php?code=503
 RewriteCond %{REQUEST_FILENAME} !-f
 RewriteCond %{REQUEST_FILENAME} !-d
 
+# Protect the admin directory
+RewriteRule ^admin/?$ admin/index.php [L]
+RewriteRule ^admin/login/?$ admin/login.php [L]
+RewriteRule ^admin/(.+)$ admin/$1 [L]
+
 # Redirect root to main website
 RewriteRule ^$ https://teknologipendidikan.or.id/ [R=302,QSA,L]
 
