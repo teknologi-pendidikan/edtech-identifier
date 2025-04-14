@@ -5,6 +5,7 @@ require_once __DIR__ . '/includes/config.php';
 $submission_success = false;
 $created_prefix = '';
 $created_suffix = '';
+$turnstile_error = false;
 
 $conn = create_db_connection($db_config);
 if (!$conn) {
@@ -29,43 +30,71 @@ function is_suffix_unique($prefix, $suffix, $conn)
     return $is_unique;
 }
 
+// Function to verify Turnstile token
+function verify_turnstile($token)
+{
+    $secret_key = '0x4AAAAAABLf2mLvGLOleK92Qt8TUExvAAA'; // Replace with your actual secret key
+
+    $data = [
+        'secret' => $secret_key,
+        'response' => $token,
+        'remoteip' => $_SERVER['REMOTE_ADDR']
+    ];
+
+    $ch = curl_init('https://challenges.cloudflare.com/turnstile/v0/siteverify');
+    curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+    curl_setopt($ch, CURLOPT_POST, true);
+    curl_setopt($ch, CURLOPT_POSTFIELDS, http_build_query($data));
+    $result = curl_exec($ch);
+    curl_close($ch);
+
+    $result_json = json_decode($result, true);
+    return isset($result_json['success']) && $result_json['success'] === true;
+}
+
 if ($_SERVER["REQUEST_METHOD"] === "POST") {
-    $prefix = $_POST['prefix'];
-
-    // If auto-generate is checked, generate a random suffix
-    $suffix = ($_POST['auto_generate'] === "on") ? generate_random_suffix() : $_POST['suffix'];
-
-    // Check if manually entered suffix is unique
-    if ($_POST['auto_generate'] !== "on" && !is_suffix_unique($prefix, $suffix, $conn)) {
-        // Error will be displayed via the conditional in the HTML
+    // Verify Turnstile token
+    $token = $_POST['cf-turnstile-response'] ?? '';
+    if (!verify_turnstile($token)) {
+        $turnstile_error = true;
     } else {
-        $url = $_POST['target_url'];
-        $title = $_POST['title'];
-        $desc = $_POST['description'];
+        $prefix = $_POST['prefix'];
 
-        $stmt = $conn->prepare("INSERT INTO identifiers (prefix, suffix, target_url, title, description) VALUES (?, ?, ?, ?, ?)");
-        $stmt->bind_param("sssss", $prefix, $suffix, $url, $title, $desc);
+        // If auto-generate is checked, generate a random suffix
+        $suffix = ($_POST['auto_generate'] === "on") ? generate_random_suffix() : $_POST['suffix'];
 
-        if ($stmt->execute()) {
-            // Set success variables
-            $submission_success = true;
-            $created_prefix = $prefix;
-            $created_suffix = $suffix;
-
-            // Log the creation of a new identifier
-            $id = $stmt->insert_id;
-            $log_stmt = $conn->prepare("INSERT INTO identifier_logs (identifier_id, action, changed_by, details) VALUES (?, 'create', ?, ?)");
-            $user = $_SESSION['username'] ?? 'anonymous'; // Assuming you might add authentication later
-            $details = json_encode(['url' => $url, 'title' => $title]);
-            $log_stmt->bind_param("sss", $id, $user, $details);
-            $log_stmt->execute();
-            $log_stmt->close();
+        // Check if manually entered suffix is unique
+        if ($_POST['auto_generate'] !== "on" && !is_suffix_unique($prefix, $suffix, $conn)) {
+            // Error will be displayed via the conditional in the HTML
         } else {
-            // Error will be displayed via direct echo
-            echo "<p style='color:red;'>Error: " . $conn->error . "</p>";
-        }
+            $url = $_POST['target_url'];
+            $title = $_POST['title'];
+            $desc = $_POST['description'];
 
-        $stmt->close();
+            $stmt = $conn->prepare("INSERT INTO identifiers (prefix, suffix, target_url, title, description) VALUES (?, ?, ?, ?, ?)");
+            $stmt->bind_param("sssss", $prefix, $suffix, $url, $title, $desc);
+
+            if ($stmt->execute()) {
+                // Set success variables
+                $submission_success = true;
+                $created_prefix = $prefix;
+                $created_suffix = $suffix;
+
+                // Log the creation of a new identifier
+                $id = $stmt->insert_id;
+                $log_stmt = $conn->prepare("INSERT INTO identifier_logs (identifier_id, action, changed_by, details) VALUES (?, 'create', ?, ?)");
+                $user = $_SESSION['username'] ?? 'anonymous'; // Assuming you might add authentication later
+                $details = json_encode(['url' => $url, 'title' => $title]);
+                $log_stmt->bind_param("sss", $id, $user, $details);
+                $log_stmt->execute();
+                $log_stmt->close();
+            } else {
+                // Error will be displayed via direct echo
+                echo "<p style='color:red;'>Error: " . $conn->error . "</p>";
+            }
+
+            $stmt->close();
+        }
     }
 }
 
@@ -269,6 +298,8 @@ $conn->close();
             color: var(--text-light);
         }
     </style>
+
+    <script src="https://challenges.cloudflare.com/turnstile/v0/api.js" async defer></script>
 </head>
 
 <body>
@@ -284,6 +315,10 @@ $conn->close();
                         target="_blank">
                         Open link in new tab
                     </a></p>
+            </div>
+        <?php elseif ($turnstile_error): ?>
+            <div class="error-message">
+                <p>Human verification failed. Please try again.</p>
             </div>
         <?php elseif ($_SERVER["REQUEST_METHOD"] === "POST" && isset($suffix) && $_POST['auto_generate'] !== "on" && !is_suffix_unique($prefix, $suffix, $conn)): ?>
             <div class="error-message">
@@ -336,6 +371,11 @@ $conn->close();
                     placeholder="Brief description of this resource"></textarea>
             </div>
 
+            <!-- Add Turnstile widget before the submit button -->
+            <div class="input-group">
+                <div class="cf-turnstile" data-sitekey="0x4AAAAAABLf2o4GsEZo4y3b" data-theme="light"></div>
+            </div>
+
             <div class="preview-box" id="preview">
                 <h3>Link Preview</h3>
                 <p><strong><?php echo $_SERVER['HTTP_HOST']; ?>/<span id="preview-prefix">category</span>/<span
@@ -348,8 +388,10 @@ $conn->close();
     </div>
 
     <footer>
-        <p>DPTSI | &copy; <?php echo date('Y'); ?> Teknologi Pendidikan ID</p>
-        <p><a href="list" style="color: var(--primary);">View all resource links</a></p>
+        <p>DPTSI &copy; <?php echo date('Y'); ?> Teknologi Pendidikan ID</p>
+        <p><a href="list" style="color: var(--primary);">View all resource links</a> | Protected by <a
+                href="https://www.cloudflare.com/products/turnstile/" target="_blank"
+                style="color: var(--primary);">Cloudflare Turnstile</a></p>
     </footer>
 
     <script>
