@@ -3,7 +3,11 @@ require_once __DIR__ . '/includes/config.php';
 
 $conn = create_db_connection($db_config);
 if (!$conn) {
-    die("Database connection failed: " . mysqli_connect_error());
+    // API should return JSON error instead of redirecting
+    header('Content-Type: application/json');
+    http_response_code(500);
+    echo json_encode(['error' => 'Database connection failed']);
+    exit();
 }
 
 // Set headers for JSON response

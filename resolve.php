@@ -3,7 +3,9 @@ require_once __DIR__ . '/includes/config.php';
 
 $conn = create_db_connection($db_config);
 if (!$conn) {
-    die("Database connection failed: " . mysqli_connect_error());
+    // Updated: Use the custom error page for database connection errors
+    header('Location: /error.php?code=500');
+    exit();
 }
 
 $uri = $_GET['id'] ?? ''; // e.g. "edtechid.100/2025-001"
@@ -20,14 +22,17 @@ if (preg_match('#^(edtechid\.[0-9]+)/(.+)$#', $uri, $matches)) { // Updated rege
         header("Location: $url");
         exit();
     } else {
-        http_response_code(404);
-        echo "DOI not found.";
+        // Updated: Use the custom error page for 404 errors
+        header('Location: /error.php?code=404');
+        $stmt->close();
+        $conn->close();
+        exit();
     }
-    $stmt->close();
 } else {
-    echo "Invalid identifier format.";
+    // Updated: Use the custom error page for malformed input
+    $conn->close();
+    header('Location: /error.php?code=400');
+    exit();
 }
-
-$conn->close();
 ?>
 
