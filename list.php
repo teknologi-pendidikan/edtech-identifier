@@ -211,6 +211,59 @@ $conn->close();
             font-size: 13px;
             color: var(--text-light);
         }
+
+        .modal {
+            display: none;
+            position: fixed;
+            z-index: 1000;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            overflow: auto;
+            background-color: rgba(0, 0, 0, 0.4);
+        }
+
+        .modal-content {
+            background-color: var(--card-bg);
+            margin: 15% auto;
+            padding: 20px;
+            border-radius: 12px;
+            width: 80%;
+            max-width: 500px;
+            text-align: center;
+        }
+
+        .close {
+            color: var(--text-light);
+            float: right;
+            font-size: 28px;
+            font-weight: bold;
+            cursor: pointer;
+        }
+
+        .close:hover,
+        .close:focus {
+            color: var(--text);
+            text-decoration: none;
+        }
+
+        .qr-container {
+            margin: 20px auto;
+        }
+
+        .download-button {
+            padding: 10px 15px;
+            background-color: var(--success);
+            color: white;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+        }
+
+        .download-button:hover {
+            background-color: #43a047;
+        }
     </style>
 </head>
 <body>
@@ -251,6 +304,7 @@ $conn->close();
                         <th>Title</th>
                         <th>Description</th>
                         <th>Created</th>
+                        <th>Actions</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -271,10 +325,27 @@ $conn->close();
                             <td>
                                 <?php echo date('M j, Y', strtotime($row['created_at'])); ?>
                             </td>
+                            <td>
+                                <button class="qr-button"
+                                    data-url="https://<?php echo $_SERVER['HTTP_HOST']; ?>/<?php echo htmlspecialchars($row['prefix']); ?>/<?php echo htmlspecialchars($row['suffix']); ?>"
+                                    data-title="<?php echo htmlspecialchars($row['title'] ?: 'Resource'); ?>">
+                                    QR
+                                </button>
+                            </td>
                         </tr>
                     <?php endwhile; ?>
                 </tbody>
             </table>
+
+            <div id="qr-modal" class="modal">
+                <div class="modal-content">
+                    <span class="close">&times;</span>
+                    <h3 id="qr-title">QR Code</h3>
+                    <div id="qr-container" class="qr-container"></div>
+                    <p class="qr-url"></p>
+                    <button id="download-qr" class="download-button">Download QR Code</button>
+                </div>
+            </div>
         <?php else: ?>
             <div class="no-results">
                 <p>No resources found matching your criteria.</p>
@@ -289,5 +360,75 @@ $conn->close();
     <footer>
         <p>DPTSI | &copy; <?php echo date('Y'); ?> Teknologi Pendidikan ID</p>
     </footer>
+
+    <!-- Include QRCode.js library -->
+    <script src="https://cdn.jsdelivr.net/npm/qrcodejs@1.0.0/qrcode.min.js"></script>
+
+    <script>
+        // Get modal elements
+        const modal = document.getElementById('qr-modal');
+        const closeBtn = document.querySelector('.close');
+        const qrContainer = document.getElementById('qr-container');
+        const qrTitle = document.getElementById('qr-title');
+        const qrUrlDisplay = document.querySelector('.qr-url');
+        const downloadBtn = document.getElementById('download-qr');
+
+        // QR code instance
+        let qrcode = null;
+
+        // Add event listeners to QR buttons
+        document.querySelectorAll('.qr-button').forEach(button => {
+            button.addEventListener('click', function() {
+                const url = this.getAttribute('data-url');
+                const title = this.getAttribute('data-title');
+
+                // Clear previous QR code
+                qrContainer.innerHTML = '';
+
+                // Create new QR code
+                qrcode = new QRCode(qrContainer, {
+                    text: url,
+                    width: 200,
+                    height: 200,
+                    colorDark: "#000000",
+                    colorLight: "#ffffff",
+                    correctLevel: QRCode.CorrectLevel.H
+                });
+
+                // Update modal content
+                qrTitle.textContent = 'QR Code for: ' + title;
+                qrUrlDisplay.textContent = url;
+
+                // Show modal
+                modal.style.display = 'block';
+            });
+        });
+
+        // Close modal when clicking the × button
+        closeBtn.addEventListener('click', function() {
+            modal.style.display = 'none';
+        });
+
+        // Close modal when clicking outside of it
+        window.addEventListener('click', function(event) {
+            if (event.target === modal) {
+                modal.style.display = 'none';
+            }
+        });
+
+        // Download QR code as image
+        downloadBtn.addEventListener('click', function() {
+            const canvas = qrContainer.querySelector('canvas');
+            if (canvas) {
+                const url = canvas.toDataURL('image/png');
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = 'qrcode.png';
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+            }
+        });
+    </script>
 </body>
 </html>
