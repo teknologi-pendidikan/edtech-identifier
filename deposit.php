@@ -82,7 +82,21 @@ function get_prefix_counts($conn)
     return $counts;
 }
 
+// Get available prefixes from the database
+function get_prefixes($conn)
+{
+    $prefixes = [];
+    $result = $conn->query("SELECT prefix, name, description FROM prefixes WHERE is_active = TRUE ORDER BY prefix");
+    if ($result) {
+        while ($row = $result->fetch_assoc()) {
+            $prefixes[] = $row;
+        }
+    }
+    return $prefixes;
+}
+
 $prefix_counts = get_prefix_counts($conn);
+$prefixes = get_prefixes($conn);
 $conn->close();
 ?>
 
@@ -252,21 +266,12 @@ $conn->close();
                 <label for="prefix">Prefix:</label>
                 <select name="prefix" id="prefix" required>
                     <option value="">-- Select a prefix --</option>
-                    <option value="edtechid.100">edtechid.100 - EDTECH Resources
-                        <?php echo isset($prefix_counts['edtechid.100']) ? "({$prefix_counts['edtechid.100']} links)" : "(0 links)"; ?>
-                    </option>
-                    <option value="edtechid.1">edtechid.1 - Journal Articles
-                        <?php echo isset($prefix_counts['edtechid.1']) ? "({$prefix_counts['edtechid.1']} links)" : "(0 links)"; ?>
-                    </option>
-                    <option value="edtechid.2">edtechid.2 - Educational Tools
-                        <?php echo isset($prefix_counts['edtechid.2']) ? "({$prefix_counts['edtechid.2']} links)" : "(0 links)"; ?>
-                    </option>
-                    <option value="edtechid.3">edtechid.3 - Research Papers
-                        <?php echo isset($prefix_counts['edtechid.3']) ? "({$prefix_counts['edtechid.3']} links)" : "(0 links)"; ?>
-                    </option>
-                    <option value="edtechid.4">edtechid.4 - Learning Materials
-                        <?php echo isset($prefix_counts['edtechid.4']) ? "({$prefix_counts['edtechid.4']} links)" : "(0 links)"; ?>
-                    </option>
+                    <?php foreach ($prefixes as $prefix): ?>
+                        <option value="<?php echo htmlspecialchars($prefix['prefix']); ?>">
+                            <?php echo htmlspecialchars($prefix['prefix']) . ' - ' . htmlspecialchars($prefix['name']); ?>
+                            <?php echo isset($prefix_counts[$prefix['prefix']]) ? "({$prefix_counts[$prefix['prefix']]} links)" : "(0 links)"; ?>
+                        </option>
+                    <?php endforeach; ?>
                 </select>
                 <div class="form-tip">Choose a category for your link</div>
             </div>
