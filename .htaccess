@@ -1,0 +1,26 @@
+RewriteEngine On
+
+# Skip real files/folders
+RewriteCond %{REQUEST_FILENAME} !-f
+RewriteCond %{REQUEST_FILENAME} !-d
+
+# Redirect root to main website
+RewriteRule ^$ https://teknologipendidikan.or.id/ [R=302,QSA,L]
+
+# Access to deposit form
+RewriteRule ^deposit/?$ deposit.php [L]
+
+# API access via /api/edtechid.100/example
+RewriteRule ^api/(edtechid\.[0-9]+)/(.+)$ api.php?id=$1/$2 [L]
+
+# API listing for a prefix
+RewriteRule ^api/(edtechid\.[0-9]+)/?$ api.php?prefix=$1 [L]
+
+# API listing for all identifiers
+RewriteRule ^api/?$ api.php [L]
+
+# Match /prefix/suffix for regular redirects
+RewriteRule ^(edtechid\.[0-9]+)/(.+)$ resolve.php?id=$1/$2 [L]
+
+# Legacy support for old format (optional)
+RewriteRule ^([0-9]+\.[0-9]+)/(.+)$ resolve.php?id=$1/$2 [L]
