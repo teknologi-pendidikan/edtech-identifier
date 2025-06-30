@@ -1,84 +1,245 @@
 <?php
 require_once __DIR__ . '/includes/config.php';
+require_once __DIR__ . '/includes/security.php';
+
+// Set security headers
+set_security_headers();
+
+$validation_errors = [];
+$upload_errors = [];
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_FILES['file'])) {
-    $file = $_FILES['file'];
-
-    if ($file['error'] === UPLOAD_ERR_OK) {
-        $fileTmpPath = $file['tmp_name'];
-        $fileContent = file_get_contents($fileTmpPath);
-
-        $lines = explode("\n", $fileContent);
-        $conn = create_db_connection($db_config);
-
-        if (!$conn) {
-            die("Database connection failed: " . mysqli_connect_error());
-        }
-
-        $successCount = 0;
-        $errorCount = 0;
-
-        foreach ($lines as $line) {
-            $line = trim($line);
-            if (empty($line))
-                continue;
-
-            // Check if the prefix is missing and infer a default prefix
-            if (!str_contains($line, '/')) {
-                $errorCount++;
-                echo "<p>Error: Invalid format. Missing '/' in line: '$line'.</p>";
-                continue;
-            }
-
-            list($prefix, $suffix) = explode('/', $line, 2);
-
-            if (!str_starts_with($prefix, 'edtechid.')) {
-                $suffix = $prefix . '/' . $suffix;
-                $prefix = 'edtechid.100'; // Default prefix
-            }
-
-            $stmtCheckPrefix = $conn->prepare("SELECT COUNT(*) FROM prefixes WHERE prefix = ?");
-            $stmtCheckPrefix->bind_param("s", $prefix);
-            $stmtCheckPrefix->execute();
-            $stmtCheckPrefix->bind_result($prefixExists);
-            $stmtCheckPrefix->fetch();
-            $stmtCheckPrefix->close();
-
-            if (!$prefixExists) {
-                $errorCount++;
-                echo "<p>Error: Prefix '$prefix' does not exist in the prefixes table.</p>";
-                continue;
-            }
-
-            if (empty($suffix) || empty($url) || empty($title) || empty($desc)) {
-                $errorCount++;
-                echo "<p>Error: Missing required fields in line: '$line'.</p>";
-                continue;
-            }
-
-            $stmt = $conn->prepare("INSERT INTO identifiers (prefix, suffix, target_url, title, description) VALUES (?, ?, ?, ?, ?)");
-            $stmt->bind_param("sssss", $prefix, $suffix, $url, $title, $desc);
-
-            if (!$stmt->execute()) {
-                if ($stmt->errno === 1062) { // Duplicate entry error
-                    echo "<p>Error: Duplicate entry for prefix '$prefix' and suffix '$suffix'.</p>";
-                } else {
-                    echo "<p>Error inserting record: " . htmlspecialchars($stmt->error) . "</p>";
-                }
-                $errorCount++;
-            } else {
-                $successCount++;
-            }
-
-            $stmt->close();
-        }
-
-        $conn->close();
-
-        echo "<p>Upload complete. Success: $successCount, Errors: $errorCount</p>";
-    } else {
-        echo "<p>Error uploading file. Please try again.</p>";
+    // Check CSRF token
+    $csrf_token = $_POST['csrf_token'] ?? '';
+    if (!verify_csrf_token($csrf_token)) {
+        log_security_event('csrf_token_invalid', ['action' => 'bulk_upload']);
+        $validation_errors[] = 'Invalid security token. Please refresh the page and try again.';
     }
+
+    // Check rate limiting
+    if (!check_rate_limit('bulk_upload', 2, 600)) { // 2 uploads per 10 minutes
+        log_security_event('rate_limit_exceeded', ['action' => 'bulk_upload']);
+        $validation_errors[] = 'Upload rate limit exceeded. Please wait before trying again.';
+    }
+
+    $file = $_FILES['file'];
+    $validate_only = isset($_POST['validate_only']);
+
+    if ($file['error'] === UPLOAD_ERR_OK && empty($validation_errors)) {
+        // Validate file upload
+        $upload_validation = validate_file_upload($file);
+        if (!empty($upload_validation)) {
+            $validation_errors = array_merge($validation_errors, $upload_validation);
+        } else {
+            // Sanitize filename and move to secure location
+            $original_filename = sanitize_filename($file['name']);
+            $temp_path = $file['tmp_name'];
+
+            // Create uploads directory if it doesn't exist
+            $upload_dir = __DIR__ . '/temp/';
+            if (!is_dir($upload_dir)) {
+                mkdir($upload_dir, 0755, true);
+            }
+
+            $safe_filename = uniqid('upload_') . '.csv';
+            $target_path = $upload_dir . $safe_filename;
+
+            if (move_uploaded_file($temp_path, $target_path)) {
+                // Validate CSV content
+                $csv_errors = validate_csv_file($target_path);
+
+                if (!empty($csv_errors)) {
+                    $validation_errors = array_merge($validation_errors, $csv_errors);
+                } else if (!$validate_only) {
+                    // Process the file if validation passed and not validation-only mode
+                    $result = process_csv_file($target_path);
+                    $successCount = $result['success'];
+                    $errorCount = $result['errors'];
+                    $upload_errors = $result['error_details'];
+                }
+
+                // Clean up temporary file
+                unlink($target_path);
+            } else {
+                $validation_errors[] = 'Failed to process uploaded file.';
+                log_security_event('file_upload_failed', ['filename' => $original_filename]);
+            }
+        }
+    } elseif ($file['error'] !== UPLOAD_ERR_OK) {
+        $validation_errors[] = get_upload_error_message($file['error']);
+    }
+}
+
+// Validate file upload
+function validate_file_upload($file)
+{
+    $errors = [];
+
+    // Check file size (10MB limit)
+    if ($file['size'] > 10 * 1024 * 1024) {
+        $errors[] = 'File size exceeds 10MB limit.';
+    }
+
+    // Check file type
+    $allowed_types = ['text/csv', 'application/csv', 'text/plain'];
+    $file_info = finfo_open(FILEINFO_MIME_TYPE);
+    $detected_type = finfo_file($file_info, $file['tmp_name']);
+    finfo_close($file_info);
+
+    if (!in_array($detected_type, $allowed_types) && !str_ends_with(strtolower($file['name']), '.csv')) {
+        $errors[] = 'Invalid file type. Only CSV files are allowed.';
+        log_security_event('invalid_file_type_upload', ['detected_type' => $detected_type, 'filename' => $file['name']]);
+    }
+
+    return $errors;
+}
+
+// Get upload error message
+function get_upload_error_message($error_code)
+{
+    switch ($error_code) {
+        case UPLOAD_ERR_INI_SIZE:
+        case UPLOAD_ERR_FORM_SIZE:
+            return 'File is too large.';
+        case UPLOAD_ERR_PARTIAL:
+            return 'File upload was interrupted.';
+        case UPLOAD_ERR_NO_FILE:
+            return 'No file was selected.';
+        case UPLOAD_ERR_NO_TMP_DIR:
+            return 'Server configuration error.';
+        case UPLOAD_ERR_CANT_WRITE:
+            return 'Failed to write file to disk.';
+        default:
+            return 'Unknown upload error.';
+    }
+}
+
+// Process CSV file with enhanced validation
+function process_csv_file($file_path)
+{
+    $conn = create_db_connection($GLOBALS['db_config']);
+    if (!$conn) {
+        return ['success' => 0, 'errors' => 1, 'error_details' => ['Database connection failed']];
+    }
+
+    $successCount = 0;
+    $errorCount = 0;
+    $error_details = [];
+
+    $handle = fopen($file_path, 'r');
+    if (!$handle) {
+        return ['success' => 0, 'errors' => 1, 'error_details' => ['Could not read file']];
+    }
+
+    $line_number = 0;
+
+    while (($line = fgets($handle)) !== false) {
+        $line_number++;
+        $line = trim($line);
+
+        if (empty($line))
+            continue;
+
+        $data = str_getcsv($line);
+
+        if (count($data) !== 5) {
+            $errorCount++;
+            $error_details[] = "Line $line_number: Expected 5 columns, got " . count($data);
+            continue;
+        }
+
+        list($prefix, $suffix, $url, $title, $desc) = $data;
+
+        // Validate and sanitize each field
+        $prefix = validate_text_input($prefix, 50);
+        $suffix = validate_text_input($suffix, 100);
+        $title = validate_text_input($title, 255);
+        $desc = validate_text_input($desc, 1000);
+
+        // Comprehensive validation
+        $validation_errors = [];
+
+        if (!$prefix || !validate_prefix_format($prefix)) {
+            $validation_errors[] = 'Invalid prefix format';
+        }
+
+        if (!$suffix || !validate_suffix_format($suffix)) {
+            $validation_errors[] = 'Invalid suffix format';
+        }
+
+        if (!validate_url($url)) {
+            $validation_errors[] = 'Invalid URL';
+        }
+
+        if (!$title) {
+            $validation_errors[] = 'Title is required';
+        }
+
+        if (!empty($validation_errors)) {
+            $errorCount++;
+            $error_details[] = "Line $line_number: " . implode(', ', $validation_errors);
+            continue;
+        }
+
+        // Check if prefix exists
+        $prefix_check = $conn->prepare("SELECT COUNT(*) FROM prefixes WHERE prefix = ?");
+        $prefix_check->bind_param("s", $prefix);
+        $prefix_check->execute();
+        $prefix_check->bind_result($prefix_exists);
+        $prefix_check->fetch();
+        $prefix_check->close();
+
+        if (!$prefix_exists) {
+            $errorCount++;
+            $error_details[] = "Line $line_number: Prefix '$prefix' does not exist";
+            continue;
+        }
+
+        // Check for duplicate identifier
+        $duplicate_check = $conn->prepare("SELECT COUNT(*) FROM identifiers WHERE prefix = ? AND suffix = ?");
+        $duplicate_check->bind_param("ss", $prefix, $suffix);
+        $duplicate_check->execute();
+        $duplicate_check->bind_result($duplicate_exists);
+        $duplicate_check->fetch();
+        $duplicate_check->close();
+
+        if ($duplicate_exists) {
+            $errorCount++;
+            $error_details[] = "Line $line_number: Identifier '$prefix/$suffix' already exists";
+            continue;
+        }
+
+        // Insert the record
+        $stmt = $conn->prepare("INSERT INTO identifiers (prefix, suffix, target_url, title, description) VALUES (?, ?, ?, ?, ?)");
+        $stmt->bind_param("sssss", $prefix, $suffix, $url, $title, $desc);
+
+        if ($stmt->execute()) {
+            $successCount++;
+
+            // Log the creation
+            $id = $stmt->insert_id;
+            $log_stmt = $conn->prepare("INSERT INTO identifier_logs (identifier_id, action, changed_by, details) VALUES (?, 'bulk_create', ?, ?)");
+            $user = $_SESSION['username'] ?? 'anonymous';
+            $details = json_encode(['line' => $line_number, 'prefix' => $prefix, 'suffix' => $suffix]);
+            $log_stmt->bind_param("sss", $id, $user, $details);
+            $log_stmt->execute();
+            $log_stmt->close();
+        } else {
+            $errorCount++;
+            $error_details[] = "Line $line_number: Database error - " . $stmt->error;
+            log_security_event('database_error', ['error' => $stmt->error, 'action' => 'bulk_upload', 'line' => $line_number]);
+        }
+
+        $stmt->close();
+    }
+
+    fclose($handle);
+    $conn->close();
+
+    // Log bulk upload completion
+    log_security_event('bulk_upload_completed', ['success' => $successCount, 'errors' => $errorCount]);
+
+    return ['success' => $successCount, 'errors' => $errorCount, 'error_details' => $error_details];
 }
 ?>
 
@@ -132,6 +293,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_FILES['file'])) {
             </p>
 
             <form method="POST" enctype="multipart/form-data" id="upload-form">
+                <input type="hidden" name="csrf_token" value="<?php echo htmlspecialchars(generate_csrf_token()); ?>">
                 <div class="form-group">
                     <label for="file" class="form-label">CSV File *</label>
                     <input type="file" name="file" id="file" class="text-input" accept=".csv,.txt" required

@@ -1,12 +1,13 @@
 <?php
 require_once '../includes/auth.php';
 require_once '../includes/config.php';
+require_once '../includes/security.php';
+
+// Set security headers
+set_security_headers();
 
 // Check if user is authenticated
-if (!is_authenticated()) {
-    header('Location: login.php');
-    exit;
-}
+require_auth();
 
 // Connect to database
 $conn = create_db_connection($db_config);
@@ -19,57 +20,86 @@ $error_message = '';
 
 // Handle form submissions
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    if (isset($_POST['action']) && $_POST['action'] === 'add_prefix') {
-        // Add a new prefix
-        $prefix = trim($_POST['prefix']);
-        $name = trim($_POST['name']);
-        $description = trim($_POST['description']);
-        $is_active = isset($_POST['is_active']) ? 1 : 0;
-
-        // Validate prefix format
-        if (!preg_match('/^edtechid\.[0-9a-zA-Z]+$/', $prefix)) {
-            $error_message = "Invalid prefix format. It must be in the format 'edtechid.ALPHANUMERIC'.";
-        } else {
-            // Check if prefix already exists
-            $check_stmt = $conn->prepare("SELECT 1 FROM prefixes WHERE prefix = ?");
-            $check_stmt->bind_param("s", $prefix);
-            $check_stmt->execute();
-            $check_stmt->store_result();
-
-            if ($check_stmt->num_rows > 0) {
-                $error_message = "This prefix already exists.";
-                $check_stmt->close();
+    // Check CSRF token
+    $csrf_token = $_POST['csrf_token'] ?? '';
+    if (!verify_csrf_token($csrf_token)) {
+        log_security_event('csrf_token_invalid', ['action' => 'prefix_management']);
+        $error_message = 'Invalid security token. Please refresh the page and try again.';
+    } else {
+        if (isset($_POST['action']) && $_POST['action'] === 'add_prefix') {
+            // Check rate limiting
+            if (!check_rate_limit('prefix_add', 5, 300)) { // 5 additions per 5 minutes
+                log_security_event('rate_limit_exceeded', ['action' => 'prefix_add']);
+                $error_message = 'Too many prefix additions. Please wait before trying again.';
             } else {
-                $check_stmt->close();
+                // Add a new prefix
+                $prefix = validate_text_input($_POST['prefix'] ?? '', 50);
+                $name = validate_text_input($_POST['name'] ?? '', 100);
+                $description = validate_text_input($_POST['description'] ?? '', 500);
+                $is_active = isset($_POST['is_active']) ? 1 : 0;
 
-                // Insert new prefix
-                $stmt = $conn->prepare("INSERT INTO prefixes (prefix, name, description, is_active) VALUES (?, ?, ?, ?)");
-                $stmt->bind_param("sssi", $prefix, $name, $description, $is_active);
-
-                if ($stmt->execute()) {
-                    $success_message = "New category added successfully.";
+                // Validate prefix format
+                if (!$prefix || !validate_prefix_format($prefix)) {
+                    $error_message = "Invalid prefix format. It must be in the format 'edtechid.ALPHANUMERIC'.";
+                } elseif (!$name) {
+                    $error_message = "Category name is required.";
                 } else {
-                    $error_message = "Failed to add new category: " . $conn->error;
+                    // Check if prefix already exists
+                    $check_stmt = $conn->prepare("SELECT 1 FROM prefixes WHERE prefix = ?");
+                    $check_stmt->bind_param("s", $prefix);
+                    $check_stmt->execute();
+                    $check_stmt->store_result();
+
+                    if ($check_stmt->num_rows > 0) {
+                        $error_message = "This prefix already exists.";
+                        $check_stmt->close();
+                    } else {
+                        $check_stmt->close();
+
+                        // Insert new prefix
+                        $stmt = $conn->prepare("INSERT INTO prefixes (prefix, name, description, is_active) VALUES (?, ?, ?, ?)");
+                        $stmt->bind_param("sssi", $prefix, $name, $description, $is_active);
+
+                        if ($stmt->execute()) {
+                            $success_message = "New category added successfully.";
+                            log_security_event('prefix_added', ['prefix' => $prefix, 'name' => $name]);
+                        } else {
+                            $error_message = "Failed to add new category.";
+                            log_security_event('database_error', ['error' => $conn->error, 'action' => 'prefix_add']);
+                        }
+                        $stmt->close();
+                    }
                 }
-                $stmt->close();
+            }
+        } elseif (isset($_POST['action']) && $_POST['action'] === 'update_prefix') {
+            // Check rate limiting
+            if (!check_rate_limit('prefix_update', 10, 300)) { // 10 updates per 5 minutes
+                log_security_event('rate_limit_exceeded', ['action' => 'prefix_update']);
+                $error_message = 'Too many prefix updates. Please wait before trying again.';
+            } else {
+                // Update existing prefix
+                $prefix = validate_text_input($_POST['prefix'] ?? '', 50);
+                $name = validate_text_input($_POST['name'] ?? '', 100);
+                $description = validate_text_input($_POST['description'] ?? '', 500);
+                $is_active = isset($_POST['is_active']) ? 1 : 0;
+
+                if (!$prefix || !$name) {
+                    $error_message = "Prefix and name are required.";
+                } else {
+                    $stmt = $conn->prepare("UPDATE prefixes SET name = ?, description = ?, is_active = ? WHERE prefix = ?");
+                    $stmt->bind_param("ssis", $name, $description, $is_active, $prefix);
+
+                    if ($stmt->execute()) {
+                        $success_message = "Category updated successfully.";
+                        log_security_event('prefix_updated', ['prefix' => $prefix, 'name' => $name]);
+                    } else {
+                        $error_message = "Failed to update category.";
+                        log_security_event('database_error', ['error' => $conn->error, 'action' => 'prefix_update']);
+                    }
+                    $stmt->close();
+                }
             }
         }
-    } elseif (isset($_POST['action']) && $_POST['action'] === 'update_prefix') {
-        // Update existing prefix
-        $prefix = $_POST['prefix'];
-        $name = trim($_POST['name']);
-        $description = trim($_POST['description']);
-        $is_active = isset($_POST['is_active']) ? 1 : 0;
-
-        $stmt = $conn->prepare("UPDATE prefixes SET name = ?, description = ?, is_active = ? WHERE prefix = ?");
-        $stmt->bind_param("ssis", $name, $description, $is_active, $prefix);
-
-        if ($stmt->execute()) {
-            $success_message = "Category updated successfully.";
-        } else {
-            $error_message = "Failed to update category: " . $conn->error;
-        }
-        $stmt->close();
     }
 }
 
@@ -336,6 +366,7 @@ $conn->close();
 
             <form method="post" id="add-form">
                 <input type="hidden" name="action" value="add_prefix">
+                <input type="hidden" name="csrf_token" value="<?php echo htmlspecialchars(generate_csrf_token()); ?>">
 
                 <div class="form-group">
                     <label for="prefix" class="form-label">Prefix *</label>
@@ -394,6 +425,7 @@ $conn->close();
             <form method="post" id="edit-form">
                 <input type="hidden" name="action" value="update_prefix">
                 <input type="hidden" id="edit-prefix" name="prefix" value="">
+                <input type="hidden" name="csrf_token" value="<?php echo htmlspecialchars(generate_csrf_token()); ?>">
 
                 <div class="form-group">
                     <label class="form-label">Prefix</label>

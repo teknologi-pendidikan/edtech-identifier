@@ -1,12 +1,13 @@
 <?php
 require_once '../includes/auth.php';
 require_once '../includes/config.php';
+require_once '../includes/security.php';
+
+// Set security headers
+set_security_headers();
 
 // Check if user is authenticated
-if (!is_authenticated()) {
-    header('Location: login.php');
-    exit;
-}
+require_auth();
 
 // Connect to database
 $conn = create_db_connection($db_config);
@@ -26,27 +27,45 @@ $delete_success = false;
 $delete_error = '';
 
 if (isset($_POST['action']) && $_POST['action'] === 'delete') {
-    $prefix = $_POST['prefix'] ?? '';
-    $suffix = $_POST['suffix'] ?? '';
-
-    if (!empty($prefix) && !empty($suffix)) {
-        $stmt = $conn->prepare("DELETE FROM identifiers WHERE prefix = ? AND suffix = ?");
-        $stmt->bind_param("ss", $prefix, $suffix);
-
-        if ($stmt->execute()) {
-            $delete_success = true;
-
-            // Log the deletion
-            $log_stmt = $conn->prepare("INSERT INTO identifier_logs (identifier_id, action, changed_by, details) VALUES (UUID(), 'delete', ?, ?)");
-            $username = $_SESSION['username'] ?? 'admin';
-            $details = json_encode(['prefix' => $prefix, 'suffix' => $suffix]);
-            $log_stmt->bind_param("ss", $username, $details);
-            $log_stmt->execute();
-            $log_stmt->close();
+    // Check CSRF token
+    $csrf_token = $_POST['csrf_token'] ?? '';
+    if (!verify_csrf_token($csrf_token)) {
+        log_security_event('csrf_token_invalid', ['action' => 'delete_identifier']);
+        $delete_error = 'Invalid security token. Please refresh the page and try again.';
+    } else {
+        // Check rate limiting
+        if (!check_rate_limit('admin_delete', 10, 300)) { // 10 deletes per 5 minutes
+            log_security_event('rate_limit_exceeded', ['action' => 'admin_delete']);
+            $delete_error = 'Too many delete operations. Please wait before trying again.';
         } else {
-            $delete_error = "Failed to delete the identifier: " . $conn->error;
+            $prefix = validate_text_input($_POST['prefix'] ?? '', 50);
+            $suffix = validate_text_input($_POST['suffix'] ?? '', 100);
+
+            if (!empty($prefix) && !empty($suffix)) {
+                $stmt = $conn->prepare("DELETE FROM identifiers WHERE prefix = ? AND suffix = ?");
+                $stmt->bind_param("ss", $prefix, $suffix);
+
+                if ($stmt->execute()) {
+                    $delete_success = true;
+
+                    // Log the deletion
+                    $log_stmt = $conn->prepare("INSERT INTO identifier_logs (identifier_id, action, changed_by, details) VALUES (UUID(), 'delete', ?, ?)");
+                    $username = $_SESSION['username'] ?? 'admin';
+                    $details = json_encode(['prefix' => $prefix, 'suffix' => $suffix]);
+                    $log_stmt->bind_param("ss", $username, $details);
+                    $log_stmt->execute();
+                    $log_stmt->close();
+
+                    log_security_event('identifier_deleted', ['prefix' => $prefix, 'suffix' => $suffix]);
+                } else {
+                    $delete_error = "Failed to delete the identifier: " . $conn->error;
+                    log_security_event('database_error', ['error' => $conn->error, 'action' => 'delete']);
+                }
+                $stmt->close();
+            } else {
+                $delete_error = "Invalid identifier data provided.";
+            }
         }
-        $stmt->close();
     }
 }
 
@@ -154,9 +173,17 @@ $conn->close();
                     <p class="page-subtitle">Manage EdTech identifiers and system configuration</p>
                 </div>
                 <div style="display: flex; align-items: center; gap: var(--cds-spacing-06);">
+                    <?php if (has_ip_bypass()): ?>
+                        <div style="background-color: #e3f2fd; border: 1px solid #2196f3; padding: 8px 12px; border-radius: 4px; font-size: 0.875rem;">
+                            <span style="color: #1976d2;">🏢 Institutional Access</span>
+                        </div>
+                    <?php endif; ?>
                     <div style="text-align: right;">
                         <div style="font-size: 0.875rem; color: var(--cds-text-secondary);">Logged in as</div>
                         <div style="font-weight: 500;"><?php echo htmlspecialchars($_SESSION['username']); ?></div>
+                        <?php if (has_ip_bypass()): ?>
+                            <div style="font-size: 0.75rem; color: #1976d2;">via IP bypass</div>
+                        <?php endif; ?>
                     </div>
                     <a href="?logout=1" class="btn btn-secondary">Log Out</a>
                 </div>
@@ -445,6 +472,7 @@ $conn->close();
                 <input type="hidden" name="action" value="delete">
                 <input type="hidden" name="prefix" id="delete-prefix">
                 <input type="hidden" name="suffix" id="delete-suffix">
+                <input type="hidden" name="csrf_token" value="<?php echo htmlspecialchars(generate_csrf_token()); ?>">
 
                 <div style="display: flex; justify-content: flex-end; gap: var(--cds-spacing-04);">
                     <button type="button" onclick="closeModal()" class="btn btn-secondary">Cancel</button>

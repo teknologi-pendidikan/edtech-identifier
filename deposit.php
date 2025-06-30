@@ -1,11 +1,16 @@
 <?php
 require_once __DIR__ . '/includes/config.php';
+require_once __DIR__ . '/includes/security.php';
+
+// Set security headers
+set_security_headers();
 
 // Add tracking variables
 $submission_success = false;
 $created_prefix = '';
 $created_suffix = '';
 $turnstile_error = false;
+$validation_errors = [];
 
 $conn = create_db_connection($db_config);
 if (!$conn) {
@@ -53,26 +58,65 @@ function verify_turnstile($token)
 }
 
 if ($_SERVER["REQUEST_METHOD"] === "POST") {
+    // Check CSRF token
+    $csrf_token = $_POST['csrf_token'] ?? '';
+    if (!verify_csrf_token($csrf_token)) {
+        log_security_event('csrf_token_invalid', ['action' => 'deposit']);
+        $validation_errors[] = 'Invalid security token. Please refresh the page and try again.';
+    }
+
+    // Check rate limiting
+    if (!check_rate_limit('deposit', 3, 300)) { // 3 submissions per 5 minutes
+        log_security_event('rate_limit_exceeded', ['action' => 'deposit']);
+        $validation_errors[] = 'Too many submissions. Please wait before trying again.';
+    }
+
     // Verify Turnstile token
     $token = $_POST['cf-turnstile-response'] ?? '';
     if (!verify_turnstile($token)) {
         $turnstile_error = true;
-    } else {
-        $prefix = $_POST['prefix'];
+        $validation_errors[] = 'Human verification failed. Please complete the security check.';
+    }
 
-        // If auto-generate is checked, generate a random suffix
-        $suffix = ($_POST['auto_generate'] === "on") ? generate_random_suffix() : $_POST['suffix'];
+    // If no validation errors so far, process the form
+    if (empty($validation_errors)) {
+        // Validate and sanitize inputs
+        $prefix = validate_text_input($_POST['prefix'] ?? '', 50);
+        $auto_generate = $_POST['auto_generate'] ?? 'off';
+        $suffix = $auto_generate === "on" ? generate_random_suffix() : validate_text_input($_POST['suffix'] ?? '', 100);
+        $url = $_POST['target_url'] ?? '';
+        $title = validate_text_input($_POST['title'] ?? '', 255);
+        $description = validate_text_input($_POST['description'] ?? '', 1000);
+
+        // Validate prefix format
+        if (!$prefix || !validate_prefix_format($prefix)) {
+            $validation_errors[] = 'Invalid prefix format.';
+        }
+
+        // Validate suffix format (if not auto-generated)
+        if ($auto_generate !== "on" && (!$suffix || !validate_suffix_format($suffix))) {
+            $validation_errors[] = 'Invalid suffix format. Only letters, numbers, hyphens, and underscores are allowed.';
+        }
+
+        // Validate URL
+        if (!validate_url($url)) {
+            $validation_errors[] = 'Invalid URL format or unsafe URL detected.';
+        }
+
+        // Validate title
+        if (!$title) {
+            $validation_errors[] = 'Title is required.';
+        }
 
         // Check if manually entered suffix is unique
-        if ($_POST['auto_generate'] !== "on" && !is_suffix_unique($prefix, $suffix, $conn)) {
-            // Error will be displayed via the conditional in the HTML
-        } else {
-            $url = $_POST['target_url'];
-            $title = $_POST['title'];
-            $desc = $_POST['description'];
+        if ($auto_generate !== "on" && !is_suffix_unique($prefix, $suffix, $conn)) {
+            $validation_errors[] = 'This identifier already exists. Please choose a different suffix or use auto-generation.';
+        }
 
+        // If validation passes, insert the record
+        if (empty($validation_errors)) {
             $stmt = $conn->prepare("INSERT INTO identifiers (prefix, suffix, target_url, title, description) VALUES (?, ?, ?, ?, ?)");
-            $stmt->bind_param("sssss", $prefix, $suffix, $url, $title, $desc);
+            $stmt->bind_param("sssss", $prefix, $suffix, $url, $title, $description);
 
             if ($stmt->execute()) {
                 // Set success variables
@@ -83,14 +127,16 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
                 // Log the creation of a new identifier
                 $id = $stmt->insert_id;
                 $log_stmt = $conn->prepare("INSERT INTO identifier_logs (identifier_id, action, changed_by, details) VALUES (?, 'create', ?, ?)");
-                $user = $_SESSION['username'] ?? 'anonymous'; // Assuming you might add authentication later
+                $user = $_SESSION['username'] ?? 'anonymous';
                 $details = json_encode(['url' => $url, 'title' => $title]);
                 $log_stmt->bind_param("sss", $id, $user, $details);
                 $log_stmt->execute();
                 $log_stmt->close();
+
+                log_security_event('identifier_created', ['prefix' => $prefix, 'suffix' => $suffix]);
             } else {
-                // Error will be displayed via direct echo
-                echo "<p style='color:red;'>Error: " . $conn->error . "</p>";
+                $validation_errors[] = 'Database error occurred. Please try again.';
+                log_security_event('database_error', ['error' => $conn->error, 'action' => 'deposit']);
             }
 
             $stmt->close();
@@ -184,6 +230,18 @@ $conn->close();
                         <p class="notification-message">This identifier already exists. Please choose a different suffix or use auto-generation.</p>
                     </div>
                 </div>
+            <?php elseif (!empty($validation_errors)): ?>
+                <div class="notification notification-error">
+                    <div class="notification-icon">⚠️</div>
+                    <div class="notification-content">
+                        <h3 class="notification-title">Validation Errors</h3>
+                        <ul class="notification-errors">
+                            <?php foreach ($validation_errors as $error): ?>
+                                <li><?php echo htmlspecialchars($error); ?></li>
+                            <?php endforeach; ?>
+                        </ul>
+                    </div>
+                </div>
             <?php endif; ?>
 
             <h2 class="section-title">Resource Information</h2>
@@ -192,6 +250,7 @@ $conn->close();
             </p>
 
             <form method="POST" id="deposit-form">
+                <input type="hidden" name="csrf_token" value="<?php echo htmlspecialchars(generate_csrf_token()); ?>">
                 <div class="form-group">
                     <label for="prefix" class="form-label">Category Prefix</label>
                     <select name="prefix" id="prefix" class="text-input" required>
