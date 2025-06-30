@@ -9,7 +9,7 @@ if (!$conn) {
 }
 
 $uri = $_GET['id'] ?? ''; // e.g. "edtechid.100/2025-001"
-if (preg_match('#^(edtechid\.[0-9]+)/(.+)$#', $uri, $matches)) { // Updated regex pattern
+if (preg_match('#^(edtechid\.[a-zA-Z0-9]+)/(.+)$#', $uri, $matches)) { // Updated regex pattern
     $prefix = $matches[1];
     $suffix = $matches[2];
 

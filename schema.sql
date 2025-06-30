@@ -43,8 +43,4 @@ CREATE TABLE prefixes (
 -- Insert default prefixes
 INSERT INTO prefixes (prefix, name, description)
 VALUES
-    ('edtechid.100', 'EDTECH Resources', 'General educational technology resources'),
-    ('edtechid.1', 'Journal Articles', 'Academic journal articles related to educational technology'),
-    ('edtechid.2', 'Educational Tools', 'Software and tools for education'),
-    ('edtechid.3', 'Research Papers', 'Research papers and publications'),
-    ('edtechid.4', 'Learning Materials', 'Curriculum and learning materials');
+    ('edtechid.internal', 'EDTECH Internal', 'Internal Resources');

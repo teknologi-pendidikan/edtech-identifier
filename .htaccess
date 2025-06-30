@@ -17,11 +17,14 @@ RewriteRule ^admin/?$ admin/index.php [L]
 RewriteRule ^admin/login/?$ admin/login.php [L]
 RewriteRule ^admin/(.+)$ admin/$1 [L]
 
-# Redirect root to main website
-RewriteRule ^$ https://teknologipendidikan.or.id/ [R=302,QSA,L]
+# Redirect root to index.php
+RewriteRule ^$ index.php [L]
 
 # Access to deposit form
 RewriteRule ^deposit/?$ deposit.php [L]
+
+# Access to deposit_bulk form
+RewriteRule ^deposit_bulk/?$ bulk_upload.php [L]
 
 # Access to listing of identifiers
 RewriteRule ^list/?$ list.php [L]
@@ -35,8 +38,8 @@ RewriteRule ^api/(edtechid\.[0-9]+)/?$ api.php?prefix=$1 [L]
 # API listing for all identifiers
 RewriteRule ^api/?$ api.php [L]
 
-# Match /prefix/suffix for regular redirects
-RewriteRule ^(edtechid\.[0-9]+)/(.+)$ resolve.php?id=$1/$2 [L]
+# Match /prefix/suffix for regular redirects (UPDATED PATTERN)
+RewriteRule ^(edtechid\.[a-zA-Z0-9]+)/(.+)$ resolve.php?id=$1/$2 [L]
 
 # Legacy support for old format (optional)
 RewriteRule ^([0-9]+\.[0-9]+)/(.+)$ resolve.php?id=$1/$2 [L]

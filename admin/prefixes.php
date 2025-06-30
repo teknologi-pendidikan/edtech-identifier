@@ -27,8 +27,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $is_active = isset($_POST['is_active']) ? 1 : 0;
 
         // Validate prefix format
-        if (!preg_match('/^edtechid\.[0-9]+$/', $prefix)) {
-            $error_message = "Invalid prefix format. It must be in the format 'edtechid.NUMBER'.";
+        if (!preg_match('/^edtechid\.[0-9a-zA-Z]+$/', $prefix)) {
+            $error_message = "Invalid prefix format. It must be in the format 'edtechid.ALPHANUMERIC'.";
         } else {
             // Check if prefix already exists
             $check_stmt = $conn->prepare("SELECT 1 FROM prefixes WHERE prefix = ?");
@@ -100,416 +100,415 @@ $conn->close();
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Manage Categories - EdTech UniverseID</title>
-    <style>
-        :root {
-            --primary: #4361ee;
-            --primary-dark: #3a56d4;
-            --success: #4caf50;
-            --danger: #f44336;
-            --warning: #ff9800;
-            --text: #333;
-            --text-light: #666;
-            --bg: #f5f7fa;
-            --card-bg: #fff;
-            --border: #e1e4e8;
-        }
-
-        body {
-            font-family: 'Segoe UI', -apple-system, BlinkMacSystemFont, sans-serif;
-            background-color: var(--bg);
-            margin: 0;
-            padding: 0;
-            line-height: 1.6;
-            color: var(--text);
-        }
-
-        .wrapper {
-            max-width: 1000px;
-            margin: 0 auto;
-            padding: 20px;
-        }
-
-        .header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 30px;
-            padding-bottom: 15px;
-            border-bottom: 1px solid var(--border);
-        }
-
-        .header h1 {
-            color: var(--primary);
-            margin: 0;
-            font-size: 24px;
-        }
-
-        .container {
-            background-color: var(--card-bg);
-            padding: 25px;
-            border-radius: 12px;
-            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.05);
-            margin-bottom: 30px;
-        }
-
-        h2 {
-            color: var(--text);
-            font-size: 20px;
-            margin-top: 0;
-            margin-bottom: 20px;
-        }
-
-        .notification {
-            padding: 12px 16px;
-            border-radius: 6px;
-            margin-bottom: 20px;
-        }
-
-        .notification-success {
-            background-color: rgba(76, 175, 80, 0.1);
-            border: 1px solid rgba(76, 175, 80, 0.3);
-            color: #2e7d32;
-        }
-
-        .notification-error {
-            background-color: rgba(244, 67, 54, 0.1);
-            border: 1px solid rgba(244, 67, 54, 0.3);
-            color: #c62828;
-        }
-
-        .btn {
-            display: inline-block;
-            padding: 8px 16px;
-            background-color: var(--primary);
-            color: white;
-            border: none;
-            border-radius: 4px;
-            cursor: pointer;
-            text-decoration: none;
-            font-size: 14px;
-            font-weight: 500;
-            transition: all 0.2s;
-        }
-
-        .btn:hover {
-            background-color: var(--primary-dark);
-        }
-
-        table {
-            width: 100%;
-            border-collapse: collapse;
-        }
-
-        th {
-            text-align: left;
-            padding: 12px;
-            background-color: rgba(67, 97, 238, 0.05);
-            color: var(--primary);
-            font-size: 14px;
-        }
-
-        td {
-            padding: 12px;
-            border-bottom: 1px solid var(--border);
-            font-size: 14px;
-        }
-
-        tr:hover {
-            background-color: rgba(67, 97, 238, 0.03);
-        }
-
-        .form-section {
-            margin-top: 40px;
-        }
-
-        .form-group {
-            margin-bottom: 15px;
-        }
-
-        label {
-            display: block;
-            margin-bottom: 5px;
-            font-weight: 500;
-            font-size: 14px;
-        }
-
-        input,
-        textarea {
-            width: 100%;
-            padding: 8px;
-            border: 1px solid var(--border);
-            border-radius: 4px;
-            font-family: inherit;
-            box-sizing: border-box;
-            font-size: 14px;
-        }
-
-        textarea {
-            height: 80px;
-            resize: vertical;
-        }
-
-        .checkbox-group {
-            display: flex;
-            align-items: center;
-        }
-
-        .checkbox-group input {
-            width: auto;
-            margin-right: 8px;
-        }
-
-        .checkbox-group label {
-            display: inline;
-            margin: 0;
-        }
-
-        .form-tip {
-            font-size: 12px;
-            color: var(--text-light);
-            margin-top: 3px;
-        }
-
-        .prefix-id {
-            font-family: monospace;
-            font-weight: 600;
-        }
-
-        .description {
-            color: var(--text-light);
-        }
-
-        .status-badge {
-            display: inline-block;
-            padding: 4px 8px;
-            border-radius: 4px;
-            font-size: 12px;
-            font-weight: 500;
-        }
-
-        .status-active {
-            background-color: rgba(76, 175, 80, 0.1);
-            color: #2e7d32;
-        }
-
-        .status-inactive {
-            background-color: rgba(158, 158, 158, 0.1);
-            color: #616161;
-        }
-
-        .modal {
-            display: none;
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background-color: rgba(0, 0, 0, 0.5);
-            z-index: 100;
-            align-items: center;
-            justify-content: center;
-        }
-
-        .modal-content {
-            background-color: white;
-            border-radius: 8px;
-            width: 500px;
-            padding: 20px;
-            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);
-        }
-
-        .modal-content h3 {
-            margin-top: 0;
-            color: var(--primary);
-        }
-
-        .modal-actions {
-            display: flex;
-            justify-content: flex-end;
-            gap: 10px;
-            margin-top: 20px;
-        }
-
-        .close {
-            position: absolute;
-            top: 15px;
-            right: 15px;
-            font-size: 22px;
-            font-weight: bold;
-            cursor: pointer;
-            color: var(--text-light);
-        }
-
-        .footer {
-            text-align: center;
-            margin-top: 40px;
-            padding-top: 20px;
-            border-top: 1px solid var(--border);
-            font-size: 13px;
-            color: var(--text-light);
-        }
-    </style>
+    <title>Category Management - EdTech Identifier System</title>
+    <link rel="stylesheet" href="../styles.css">
+    <link rel="icon" type="image/x-icon"
+        href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>📁</text></svg>">
 </head>
 
 <body>
-    <div class="wrapper">
-        <div class="header">
-            <h1>Manage Categories</h1>
-            <a href="index.php" class="btn">Back to Dashboard</a>
+    <header class="page-header">
+        <div class="header-content">
+            <div style="display: flex; justify-content: space-between; align-items: center;">
+                <div>
+                    <h1 class="page-title">Category Management</h1>
+                    <p class="page-subtitle">Manage identifier prefixes and categories for the EdTech system</p>
+                </div>
+                <div style="display: flex; align-items: center; gap: var(--cds-spacing-04);">
+                    <a href="index.php" class="btn btn-secondary">← Back to Dashboard</a>
+                    <a href="?logout=1" class="btn btn-secondary">Log Out</a>
+                </div>
+            </div>
         </div>
+    </header>
 
-        <div class="container">
+    <div class="main-container">
+        <main class="content-section">
             <?php if ($success_message): ?>
                 <div class="notification notification-success">
-                    <?php echo htmlspecialchars($success_message); ?>
+                    <div class="notification-icon">✅</div>
+                    <div class="notification-content">
+                        <h3 class="notification-title">Success</h3>
+                        <p class="notification-message"><?php echo htmlspecialchars($success_message); ?></p>
+                    </div>
                 </div>
             <?php endif; ?>
 
             <?php if ($error_message): ?>
                 <div class="notification notification-error">
-                    <?php echo htmlspecialchars($error_message); ?>
+                    <div class="notification-icon">⚠️</div>
+                    <div class="notification-content">
+                        <h3 class="notification-title">Error</h3>
+                        <p class="notification-message"><?php echo htmlspecialchars($error_message); ?></p>
+                    </div>
                 </div>
             <?php endif; ?>
 
-            <h2>Available Categories</h2>
+            <div
+                style="display: flex; justify-content: space-between; align-items: center; margin-bottom: var(--cds-spacing-07);">
+                <h2 class="section-title">Available Categories</h2>
+                <button type="button" onclick="showAddModal()" class="btn btn-primary">Add New Category</button>
+            </div>
 
             <?php if (count($prefixes) > 0): ?>
-                <table>
-                    <thead>
-                        <tr>
-                            <th>Prefix</th>
-                            <th>Name</th>
-                            <th>Description</th>
-                            <th>Status</th>
-                            <th>Usage</th>
-                            <th>Actions</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        <?php foreach ($prefixes as $prefix): ?>
-                            <tr>
-                                <td class="prefix-id"><?php echo htmlspecialchars($prefix['prefix']); ?></td>
-                                <td><?php echo htmlspecialchars($prefix['name']); ?></td>
-                                <td class="description">
-                                    <?php echo htmlspecialchars(substr($prefix['description'] ?? '', 0, 50)); ?>
-                                    <?php echo strlen($prefix['description'] ?? '') > 50 ? '...' : ''; ?>
-                                </td>
-                                <td>
-                                    <span
-                                        class="status-badge <?php echo $prefix['is_active'] ? 'status-active' : 'status-inactive'; ?>">
-                                        <?php echo $prefix['is_active'] ? 'Active' : 'Inactive'; ?>
-                                    </span>
-                                </td>
-                                <td><?php echo $prefix['usage_count']; ?> identifiers</td>
-                                <td>
-                                    <button class="btn"
-                                        onclick="editPrefix('<?php echo htmlspecialchars($prefix['prefix']); ?>', '<?php echo htmlspecialchars(addslashes($prefix['name'])); ?>', '<?php echo htmlspecialchars(addslashes($prefix['description'] ?? '')); ?>', <?php echo $prefix['is_active'] ? 'true' : 'false'; ?>)">
-                                        Edit
-                                    </button>
-                                </td>
-                            </tr>
-                        <?php endforeach; ?>
-                    </tbody>
-                </table>
+                <div class="result-card">
+                    <div style="overflow-x: auto;">
+                        <table style="width: 100%; border-collapse: collapse;">
+                            <thead>
+                                <tr style="border-bottom: 2px solid var(--cds-border-subtle-01);">
+                                    <th
+                                        style="text-align: left; padding: var(--cds-spacing-05); font-weight: 500; color: var(--cds-text-secondary);">
+                                        Prefix</th>
+                                    <th
+                                        style="text-align: left; padding: var(--cds-spacing-05); font-weight: 500; color: var(--cds-text-secondary);">
+                                        Name</th>
+                                    <th
+                                        style="text-align: left; padding: var(--cds-spacing-05); font-weight: 500; color: var(--cds-text-secondary);">
+                                        Description</th>
+                                    <th
+                                        style="text-align: center; padding: var(--cds-spacing-05); font-weight: 500; color: var(--cds-text-secondary);">
+                                        Status</th>
+                                    <th
+                                        style="text-align: center; padding: var(--cds-spacing-05); font-weight: 500; color: var(--cds-text-secondary);">
+                                        Usage</th>
+                                    <th
+                                        style="text-align: center; padding: var(--cds-spacing-05); font-weight: 500; color: var(--cds-text-secondary);">
+                                        Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <?php foreach ($prefixes as $prefix): ?>
+                                    <tr style="border-bottom: 1px solid var(--cds-border-subtle-01);">
+                                        <td style="padding: var(--cds-spacing-05);">
+                                            <div
+                                                style="font-family: 'IBM Plex Mono', monospace; font-size: 0.875rem; color: var(--cds-text-primary); font-weight: 500;">
+                                                <?php echo htmlspecialchars($prefix['prefix']); ?>
+                                            </div>
+                                            <div
+                                                style="font-size: 0.75rem; color: var(--cds-text-secondary); margin-top: var(--cds-spacing-02);">
+                                                Created: <?php echo date('M j, Y', strtotime($prefix['created_at'])); ?>
+                                            </div>
+                                        </td>
+                                        <td style="padding: var(--cds-spacing-05);">
+                                            <div style="font-weight: 500; color: var(--cds-text-primary);">
+                                                <?php echo htmlspecialchars($prefix['name']); ?>
+                                            </div>
+                                        </td>
+                                        <td style="padding: var(--cds-spacing-05); max-width: 250px;">
+                                            <div
+                                                style="color: var(--cds-text-secondary); font-size: 0.875rem; line-height: 1.4;">
+                                                <?php
+                                                $description = $prefix['description'] ?? '';
+                                                echo htmlspecialchars(strlen($description) > 80 ? substr($description, 0, 80) . '...' : $description);
+                                                ?>
+                                            </div>
+                                        </td>
+                                        <td style="padding: var(--cds-spacing-05); text-align: center;">
+                                            <span style="
+                                                display: inline-block;
+                                                padding: var(--cds-spacing-02) var(--cds-spacing-04);
+                                                border-radius: 12px;
+                                                font-size: 0.75rem;
+                                                font-weight: 500;
+                                                <?php if ($prefix['is_active']): ?>
+                                                    background-color: #d4edda;
+                                                    color: #155724;
+                                                    border: 1px solid #c3e6cb;
+                                                <?php else: ?>
+                                                    background-color: #f8d7da;
+                                                    color: #721c24;
+                                                    border: 1px solid #f5c6cb;
+                                                <?php endif; ?>
+                                            ">
+                                                <?php echo $prefix['is_active'] ? 'Active' : 'Inactive'; ?>
+                                            </span>
+                                        </td>
+                                        <td style="padding: var(--cds-spacing-05); text-align: center;">
+                                            <div style="font-weight: 500; color: var(--cds-text-primary);">
+                                                <?php echo $prefix['usage_count']; ?>
+                                            </div>
+                                            <div style="font-size: 0.75rem; color: var(--cds-text-secondary);">
+                                                identifiers
+                                            </div>
+                                        </td>
+                                        <td style="padding: var(--cds-spacing-05); text-align: center;">
+                                            <button type="button" class="btn btn-secondary"
+                                                style="padding: var(--cds-spacing-03) var(--cds-spacing-05); min-width: auto; height: auto; font-size: 0.75rem;"
+                                                onclick="editPrefix('<?php echo htmlspecialchars($prefix['prefix']); ?>', '<?php echo htmlspecialchars(addslashes($prefix['name'])); ?>', '<?php echo htmlspecialchars(addslashes($prefix['description'] ?? '')); ?>', <?php echo $prefix['is_active'] ? 'true' : 'false'; ?>)">
+                                                Edit
+                                            </button>
+                                        </td>
+                                    </tr>
+                                <?php endforeach; ?>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
             <?php else: ?>
-                <p>No categories defined yet.</p>
+                <div class="notification notification-info">
+                    <div class="notification-icon">ℹ️</div>
+                    <div class="notification-content">
+                        <h3 class="notification-title">No Categories Defined</h3>
+                        <p class="notification-message">
+                            No identifier categories have been created yet. Get started by adding your first category.
+                        </p>
+                        <p class="notification-message">
+                            <button type="button" onclick="showAddModal()" class="result-link">Add your first category
+                                →</button>
+                        </p>
+                    </div>
+                </div>
             <?php endif; ?>
+        </main>
 
-            <div class="form-section">
-                <h2>Add New Category</h2>
+        <aside class="info-panel">
+            <h2 class="section-title">Category Guide</h2>
 
-                <form method="post">
-                    <input type="hidden" name="action" value="add_prefix">
-
-                    <div class="form-group">
-                        <label for="prefix">Prefix:</label>
-                        <input type="text" id="prefix" name="prefix" placeholder="edtechid.XXX" required>
-                        <div class="form-tip">Must be in the format: edtechid.NUMBER (e.g., edtechid.100)</div>
-                    </div>
-
-                    <div class="form-group">
-                        <label for="name">Name:</label>
-                        <input type="text" id="name" name="name" placeholder="e.g., Research Papers" required>
-                    </div>
-
-                    <div class="form-group">
-                        <label for="description">Description:</label>
-                        <textarea id="description" name="description"
-                            placeholder="Brief description of this category"></textarea>
-                    </div>
-
-                    <div class="form-group checkbox-group">
-                        <input type="checkbox" id="is_active" name="is_active" checked>
-                        <label for="is_active">Active</label>
-                    </div>
-
-                    <button type="submit" class="btn">Add Category</button>
-                </form>
+            <div class="info-item">
+                <h3 class="info-title">Prefix Format</h3>
+                <p class="info-description">
+                    All prefixes must follow the format:
+                </p>
+                <div class="example-code">edtechid.ALPHANUMERIC</div>
+                <p class="info-description">
+                    Where ALPHANUMERIC can be letters, numbers, or a combination of both.
+                </p>
             </div>
-        </div>
 
-        <div class="footer">
-            <p>EdTech UniverseID Admin | &copy; <?php echo date('Y'); ?> Teknologi Pendidikan ID</p>
+            <div class="info-item">
+                <h3 class="info-title">Example Prefixes</h3>
+                <div style="color: var(--cds-text-secondary); font-size: 0.875rem; margin: var(--cds-spacing-04) 0;">
+                    <div style="margin-bottom: var(--cds-spacing-03);">
+                        <strong>edtechid.100</strong> - General resources
+                    </div>
+                    <div style="margin-bottom: var(--cds-spacing-03);">
+                        <strong>edtechid.oer</strong> - Open educational resources
+                    </div>
+                    <div style="margin-bottom: var(--cds-spacing-03);">
+                        <strong>edtechid.mit</strong> - MIT course materials
+                    </div>
+                    <div>
+                        <strong>edtechid.research</strong> - Research papers and datasets
+                    </div>
+                </div>
+            </div>
+
+            <div class="info-item">
+                <h3 class="info-title">Category Status</h3>
+                <p class="info-description">
+                    Categories can be active or inactive:
+                </p>
+                <ul
+                    style="color: var(--cds-text-secondary); font-size: 0.875rem; margin: var(--cds-spacing-04) 0; padding-left: var(--cds-spacing-06);">
+                    <li><strong>Active:</strong> Available for new identifier creation</li>
+                    <li><strong>Inactive:</strong> Hidden from public forms but existing identifiers still work</li>
+                </ul>
+            </div>
+
+            <div class="info-item">
+                <h3 class="info-title">Usage Statistics</h3>
+                <p class="info-description">
+                    The usage count shows how many identifiers are currently using each prefix. Categories with existing
+                    identifiers cannot be deleted.
+                </p>
+            </div>
+
+            <div class="info-item">
+                <h3 class="info-title">Quick Actions</h3>
+                <div
+                    style="display: flex; flex-direction: column; gap: var(--cds-spacing-04); margin-top: var(--cds-spacing-04);">
+                    <a href="index.php" class="result-link">← Back to Dashboard</a>
+                    <a href="../deposit.php" class="result-link">Create New Identifier</a>
+                    <a href="../list.php" class="result-link">Browse All Identifiers</a>
+                </div>
+            </div>
+        </aside>
+    </div>
+
+    <!-- Add Category Modal -->
+    <div style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background-color: rgba(0, 0, 0, 0.5); z-index: 1000; justify-content: center; align-items: center;"
+        id="add-modal">
+        <div
+            style="background-color: var(--cds-background); padding: var(--cds-spacing-08); max-width: 600px; width: 90%; border: 1px solid var(--cds-border-subtle-01); max-height: 90vh; overflow-y: auto;">
+            <h3
+                style="margin: 0 0 var(--cds-spacing-06) 0; font-size: 1.25rem; font-weight: 500; color: var(--cds-text-primary);">
+                Add New Category</h3>
+
+            <form method="post" id="add-form">
+                <input type="hidden" name="action" value="add_prefix">
+
+                <div class="form-group">
+                    <label for="prefix" class="form-label">Prefix *</label>
+                    <input type="text" id="prefix" name="prefix" class="text-input" placeholder="edtechid.example"
+                        pattern="^edtechid\.[0-9a-zA-Z]+$" title="Must be in format: edtechid.ALPHANUMERIC" required>
+                    <div class="helper-text">Must be in the format: edtechid.XXX (e.g., edtechid.100 or
+                        edtechid.research)</div>
+                </div>
+
+                <div class="form-group">
+                    <label for="name" class="form-label">Category Name *</label>
+                    <input type="text" id="name" name="name" class="text-input" placeholder="e.g., Research Papers"
+                        required>
+                    <div class="helper-text">A human-readable name for this category</div>
+                </div>
+
+                <div class="form-group">
+                    <label for="description" class="form-label">Description</label>
+                    <textarea name="description" id="description" class="text-input"
+                        style="height: 96px; resize: vertical;"
+                        placeholder="Brief description of this category and its intended use"></textarea>
+                    <div class="helper-text">Optional description to help users understand when to use this category
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <div style="display: flex; align-items: center; margin-bottom: var(--cds-spacing-04);">
+                        <input type="checkbox" name="is_active" id="is_active"
+                            style="width: auto; margin-right: var(--cds-spacing-03);" checked>
+                        <label for="is_active" class="form-label" style="margin-bottom: 0; font-weight: 400;">
+                            Active (available for new identifiers)
+                        </label>
+                    </div>
+                    <div class="helper-text">Active categories appear in dropdown menus for new identifier creation
+                    </div>
+                </div>
+
+                <div
+                    style="display: flex; justify-content: flex-end; gap: var(--cds-spacing-04); margin-top: var(--cds-spacing-07);">
+                    <button type="button" onclick="closeAddModal()" class="btn btn-secondary">Cancel</button>
+                    <button type="submit" class="btn btn-primary">Add Category</button>
+                </div>
+            </form>
         </div>
     </div>
 
     <!-- Edit Category Modal -->
-    <div id="edit-modal" class="modal">
-        <div class="modal-content">
-            <span class="close" onclick="closeModal()">&times;</span>
-            <h3>Edit Category</h3>
+    <div style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background-color: rgba(0, 0, 0, 0.5); z-index: 1000; justify-content: center; align-items: center;"
+        id="edit-modal">
+        <div
+            style="background-color: var(--cds-background); padding: var(--cds-spacing-08); max-width: 600px; width: 90%; border: 1px solid var(--cds-border-subtle-01); max-height: 90vh; overflow-y: auto;">
+            <h3
+                style="margin: 0 0 var(--cds-spacing-06) 0; font-size: 1.25rem; font-weight: 500; color: var(--cds-text-primary);">
+                Edit Category</h3>
 
-            <form method="post">
+            <form method="post" id="edit-form">
                 <input type="hidden" name="action" value="update_prefix">
                 <input type="hidden" id="edit-prefix" name="prefix" value="">
 
                 <div class="form-group">
-                    <label for="edit-name">Name:</label>
-                    <input type="text" id="edit-name" name="name" required>
+                    <label class="form-label">Prefix</label>
+                    <div style="padding: var(--cds-spacing-04); background-color: var(--cds-layer-01); border: 1px solid var(--cds-border-subtle-01); font-family: 'IBM Plex Mono', monospace; color: var(--cds-text-secondary);"
+                        id="edit-prefix-display">
+                        edtechid.example
+                    </div>
+                    <div class="helper-text">Prefix cannot be changed after creation</div>
                 </div>
 
                 <div class="form-group">
-                    <label for="edit-description">Description:</label>
-                    <textarea id="edit-description" name="description"></textarea>
+                    <label for="edit-name" class="form-label">Category Name *</label>
+                    <input type="text" id="edit-name" name="name" class="text-input" required>
+                    <div class="helper-text">A human-readable name for this category</div>
                 </div>
 
-                <div class="form-group checkbox-group">
-                    <input type="checkbox" id="edit-is-active" name="is_active">
-                    <label for="edit-is-active">Active</label>
+                <div class="form-group">
+                    <label for="edit-description" class="form-label">Description</label>
+                    <textarea name="description" id="edit-description" class="text-input"
+                        style="height: 96px; resize: vertical;"></textarea>
+                    <div class="helper-text">Optional description to help users understand when to use this category
+                    </div>
                 </div>
 
-                <div class="modal-actions">
-                    <button type="button" class="btn" style="background-color: #9e9e9e;"
-                        onclick="closeModal()">Cancel</button>
-                    <button type="submit" class="btn">Update Category</button>
+                <div class="form-group">
+                    <div style="display: flex; align-items: center; margin-bottom: var(--cds-spacing-04);">
+                        <input type="checkbox" name="is_active" id="edit-is-active"
+                            style="width: auto; margin-right: var(--cds-spacing-03);">
+                        <label for="edit-is-active" class="form-label" style="margin-bottom: 0; font-weight: 400;">
+                            Active (available for new identifiers)
+                        </label>
+                    </div>
+                    <div class="helper-text">Active categories appear in dropdown menus for new identifier creation
+                    </div>
+                </div>
+
+                <div
+                    style="display: flex; justify-content: flex-end; gap: var(--cds-spacing-04); margin-top: var(--cds-spacing-07);">
+                    <button type="button" onclick="closeEditModal()" class="btn btn-secondary">Cancel</button>
+                    <button type="submit" class="btn btn-primary">Update Category</button>
                 </div>
             </form>
         </div>
     </div>
 
     <script>
-        const modal = document.getElementById('edit-modal');
+        const addModal = document.getElementById('add-modal');
+        const editModal = document.getElementById('edit-modal');
+
+        function showAddModal() {
+            // Reset form
+            document.getElementById('add-form').reset();
+            document.getElementById('is_active').checked = true;
+            addModal.style.display = 'flex';
+
+            // Focus first input
+            setTimeout(() => {
+                document.getElementById('prefix').focus();
+            }, 100);
+        }
+
+        function closeAddModal() {
+            addModal.style.display = 'none';
+        }
 
         function editPrefix(prefix, name, description, isActive) {
             document.getElementById('edit-prefix').value = prefix;
+            document.getElementById('edit-prefix-display').textContent = prefix;
             document.getElementById('edit-name').value = name;
             document.getElementById('edit-description').value = description;
             document.getElementById('edit-is-active').checked = isActive;
 
-            modal.style.display = 'flex';
+            editModal.style.display = 'flex';
+
+            // Focus first editable input
+            setTimeout(() => {
+                document.getElementById('edit-name').focus();
+            }, 100);
         }
 
-        function closeModal() {
-            modal.style.display = 'none';
+        function closeEditModal() {
+            editModal.style.display = 'none';
         }
 
-        // Close modal when clicking outside
-        window.onclick = function (event) {
-            if (event.target === modal) {
-                closeModal();
+        // Close modals when clicking outside
+        [addModal, editModal].forEach(modal => {
+            modal.addEventListener('click', function (event) {
+                if (event.target === modal) {
+                    if (modal === addModal) closeAddModal();
+                    if (modal === editModal) closeEditModal();
+                }
+            });
+        });
+
+        // Add keyboard support
+        document.addEventListener('keydown', function (event) {
+            if (event.key === 'Escape') {
+                if (addModal.style.display === 'flex') closeAddModal();
+                if (editModal.style.display === 'flex') closeEditModal();
             }
-        }
+        });
+
+        // Prefix format validation
+        document.getElementById('prefix').addEventListener('input', function () {
+            const value = this.value;
+            const isValid = /^edtechid\.[0-9a-zA-Z]*$/.test(value);
+
+            if (value && !value.startsWith('edtechid.')) {
+                this.style.borderColor = 'var(--cds-support-error)';
+            } else if (value && !isValid) {
+                this.style.borderColor = 'var(--cds-support-error)';
+            } else {
+                this.style.borderColor = '';
+            }
+        });
     </script>
 </body>
 

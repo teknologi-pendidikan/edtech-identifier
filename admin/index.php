@@ -141,311 +141,66 @@ $conn->close();
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Identifier Management - EdTech UniverseID</title>
-    <style>
-        :root {
-            --primary: #4361ee;
-            --primary-dark: #3a56d4;
-            --success: #4caf50;
-            --danger: #f44336;
-            --warning: #ff9800;
-            --text: #333;
-            --text-light: #666;
-            --bg: #f5f7fa;
-            --card-bg: #fff;
-            --border: #e1e4e8;
-        }
-
-        body {
-            font-family: 'Segoe UI', -apple-system, BlinkMacSystemFont, sans-serif;
-            background-color: var(--bg);
-            margin: 0;
-            padding: 0;
-            line-height: 1.6;
-            color: var(--text);
-        }
-
-        .wrapper {
-            max-width: 1200px;
-            margin: 0 auto;
-            padding: 20px;
-        }
-
-        .header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 30px;
-            padding-bottom: 15px;
-            border-bottom: 1px solid var(--border);
-        }
-
-        .header h1 {
-            color: var(--primary);
-            margin: 0;
-            font-size: 24px;
-        }
-
-        .user-controls {
-            display: flex;
-            align-items: center;
-            gap: 15px;
-        }
-
-        .user-info {
-            font-size: 14px;
-            color: var(--text-light);
-        }
-
-        .btn {
-            display: inline-block;
-            padding: 8px 16px;
-            background-color: var(--primary);
-            color: white;
-            border: none;
-            border-radius: 4px;
-            cursor: pointer;
-            text-decoration: none;
-            font-size: 14px;
-            font-weight: 500;
-            transition: all 0.2s;
-        }
-
-        .btn:hover {
-            background-color: var(--primary-dark);
-        }
-
-        .btn-small {
-            padding: 5px 10px;
-            font-size: 13px;
-        }
-
-        .btn-danger {
-            background-color: var(--danger);
-        }
-
-        .btn-danger:hover {
-            background-color: #d32f2f;
-        }
-
-        .container {
-            background-color: var(--card-bg);
-            padding: 25px;
-            border-radius: 12px;
-            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.05);
-            margin-bottom: 30px;
-        }
-
-        .notification {
-            padding: 12px 16px;
-            border-radius: 6px;
-            margin-bottom: 20px;
-        }
-
-        .notification-success {
-            background-color: rgba(76, 175, 80, 0.1);
-            border: 1px solid rgba(76, 175, 80, 0.3);
-            color: #2e7d32;
-        }
-
-        .notification-error {
-            background-color: rgba(244, 67, 54, 0.1);
-            border: 1px solid rgba(244, 67, 54, 0.3);
-            color: #c62828;
-        }
-
-        .filters {
-            display: flex;
-            gap: 15px;
-            margin-bottom: 25px;
-            align-items: flex-end;
-        }
-
-        .filter-group {
-            flex: 1;
-        }
-
-        label {
-            display: block;
-            margin-bottom: 8px;
-            font-weight: 500;
-            font-size: 14px;
-        }
-
-        select, input {
-            width: 100%;
-            padding: 10px;
-            border: 1px solid var(--border);
-            border-radius: 4px;
-            font-family: inherit;
-            font-size: 14px;
-        }
-
-        select:focus, input:focus {
-            border-color: var(--primary);
-            outline: none;
-            box-shadow: 0 0 0 2px rgba(67, 97, 238, 0.1);
-        }
-
-        table {
-            width: 100%;
-            border-collapse: collapse;
-        }
-
-        th {
-            text-align: left;
-            padding: 12px;
-            background-color: rgba(67, 97, 238, 0.05);
-            color: var(--primary);
-            font-size: 14px;
-        }
-
-        td {
-            padding: 12px;
-            border-bottom: 1px solid var(--border);
-            font-size: 14px;
-        }
-
-        tr:hover {
-            background-color: rgba(67, 97, 238, 0.03);
-        }
-
-        .pagination {
-            display: flex;
-            justify-content: center;
-            margin-top: 30px;
-            gap: 5px;
-        }
-
-        .pagination a, .pagination span {
-            display: inline-block;
-            padding: 8px 12px;
-            border-radius: 4px;
-            text-decoration: none;
-            color: var(--text);
-            background-color: var(--card-bg);
-            border: 1px solid var(--border);
-        }
-
-        .pagination a:hover {
-            background-color: rgba(67, 97, 238, 0.05);
-            border-color: var(--primary);
-        }
-
-        .pagination .active {
-            background-color: var(--primary);
-            color: white;
-            border-color: var(--primary);
-        }
-
-        .no-results {
-            text-align: center;
-            padding: 30px;
-            color: var(--text-light);
-        }
-
-        .actions {
-            display: flex;
-            gap: 5px;
-        }
-
-        .confirm-modal {
-            display: none;
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background-color: rgba(0, 0, 0, 0.5);
-            z-index: 100;
-            align-items: center;
-            justify-content: center;
-        }
-
-        .confirm-dialog {
-            background-color: white;
-            border-radius: 8px;
-            width: 400px;
-            padding: 20px;
-            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);
-        }
-
-        .confirm-dialog h3 {
-            margin-top: 0;
-            color: var(--danger);
-        }
-
-        .confirm-actions {
-            display: flex;
-            justify-content: flex-end;
-            gap: 10px;
-            margin-top: 20px;
-        }
-
-        .id-display {
-            font-family: monospace;
-            font-weight: 600;
-        }
-
-        .truncate {
-            max-width: 250px;
-            white-space: nowrap;
-            overflow: hidden;
-            text-overflow: ellipsis;
-        }
-
-        .footer {
-            text-align: center;
-            margin-top: 40px;
-            padding-top: 20px;
-            border-top: 1px solid var(--border);
-            font-size: 13px;
-            color: var(--text-light);
-        }
-
-        .quick-links {
-            margin-top: 10px;
-        }
-
-        .quick-links a {
-            color: var(--primary);
-            margin: 0 10px;
-            text-decoration: none;
-        }
-    </style>
+    <title>Identifier Management - EdTech Identifier System</title>
+    <link rel="stylesheet" href="../styles.css">
+    <link rel="icon" type="image/x-icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>⚙️</text></svg>">
 </head>
 <body>
-    <div class="wrapper">
-        <div class="header">
-            <h1>EdTech UniverseID Manager</h1>
-            <div class="user-controls">
-                <div class="user-info">
-                    Logged in as: <strong><?php echo htmlspecialchars($_SESSION['username']); ?></strong>
+    <header class="page-header">
+        <div class="header-content">
+            <div style="display: flex; justify-content: space-between; align-items: center;">
+                <div>
+                    <h1 class="page-title">Admin Dashboard</h1>
+                    <p class="page-subtitle">Manage EdTech identifiers and system configuration</p>
                 </div>
-                <a href="?logout=1" class="btn btn-small">Log Out</a>
+                <div style="display: flex; align-items: center; gap: var(--cds-spacing-06);">
+                    <div style="text-align: right;">
+                        <div style="font-size: 0.875rem; color: var(--cds-text-secondary);">Logged in as</div>
+                        <div style="font-weight: 500;"><?php echo htmlspecialchars($_SESSION['username']); ?></div>
+                    </div>
+                    <a href="?logout=1" class="btn btn-secondary">Log Out</a>
+                </div>
             </div>
         </div>
+    </header>
 
-        <div class="container">
+    <div class="main-container">
+        <main class="content-section">
             <?php if ($delete_success): ?>
                 <div class="notification notification-success">
-                    <strong>Success!</strong> The identifier has been deleted.
+                    <div class="notification-icon">✅</div>
+                    <div class="notification-content">
+                        <h3 class="notification-title">Identifier Deleted</h3>
+                        <p class="notification-message">The identifier has been successfully removed from the system.</p>
+                    </div>
                 </div>
             <?php endif; ?>
 
             <?php if ($delete_error): ?>
                 <div class="notification notification-error">
-                    <?php echo htmlspecialchars($delete_error); ?>
+                    <div class="notification-icon">⚠️</div>
+                    <div class="notification-content">
+                        <h3 class="notification-title">Deletion Failed</h3>
+                        <p class="notification-message"><?php echo htmlspecialchars($delete_error); ?></p>
+                    </div>
                 </div>
             <?php endif; ?>
 
-            <h2>Manage Identifiers</h2>
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: var(--cds-spacing-07);">
+                <h2 class="section-title">Identifier Management</h2>
+                <div style="display: flex; gap: var(--cds-spacing-04);">
+                    <a href="../deposit.php" class="btn btn-primary">Create New Identifier</a>
+                    <a href="../bulk_upload.php" class="btn btn-secondary">Bulk Upload</a>
+                </div>
+            </div>
 
-            <form method="GET">
-                <div class="filters">
-                    <div class="filter-group">
-                        <label for="prefix">Filter by Category:</label>
-                        <select name="prefix" id="prefix">
+            <form method="GET" class="result-card">
+                <h3 class="result-title">🔍 Search and Filter</h3>
+
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: var(--cds-spacing-06); margin-bottom: var(--cds-spacing-06);">
+                    <div class="form-group">
+                        <label for="prefix" class="form-label">Filter by Category</label>
+                        <select name="prefix" id="prefix" class="text-input">
                             <option value="">All Categories</option>
                             <?php foreach ($prefixes as $prefix): ?>
                                 <option value="<?php echo htmlspecialchars($prefix['prefix']); ?>"
@@ -456,128 +211,246 @@ $conn->close();
                         </select>
                     </div>
 
-                    <div class="filter-group">
-                        <label for="search">Search:</label>
-                        <input type="text" name="search" id="search"
-                            value="<?php echo htmlspecialchars($search_term); ?>"
-                            placeholder="Search by title or suffix">
+                    <div class="form-group">
+                        <label for="search" class="form-label">Search Identifiers</label>
+                        <input type="text"
+                               name="search"
+                               id="search"
+                               class="text-input"
+                               value="<?php echo htmlspecialchars($search_term); ?>"
+                               placeholder="Search by title, suffix, or URL">
                     </div>
+                </div>
 
-                    <button type="submit" class="btn">Apply Filters</button>
+                <div style="display: flex; justify-content: space-between; align-items: center;">
+                    <div style="color: var(--cds-text-secondary); font-size: 0.875rem;">
+                        Showing <?php echo min($per_page, $total_records); ?> of <?php echo $total_records; ?> identifiers
+                    </div>
+                    <button type="submit" class="btn btn-primary">Apply Filters</button>
                 </div>
             </form>
 
             <?php if ($result->num_rows > 0): ?>
-                <table>
-                    <thead>
-                        <tr>
-                            <th>Identifier</th>
-                            <th>Title</th>
-                            <th>Target URL</th>
-                            <th>Created</th>
-                            <th>Actions</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        <?php while ($row = $result->fetch_assoc()): ?>
-                            <tr>
-                                <td class="id-display">
-                                    <?php echo htmlspecialchars($row['prefix']); ?>/<?php echo htmlspecialchars($row['suffix']); ?>
-                                </td>
-                                <td>
-                                    <?php echo htmlspecialchars($row['title'] ?: 'Untitled'); ?>
-                                </td>
-                                <td class="truncate">
-                                    <a href="<?php echo htmlspecialchars($row['target_url']); ?>" target="_blank">
-                                        <?php echo htmlspecialchars($row['target_url']); ?>
-                                    </a>
-                                </td>
-                                <td>
-                                    <?php echo date('M j, Y', strtotime($row['created_at'])); ?>
-                                </td>
-                                <td class="actions">
-                                    <a href="edit.php?id=<?php echo htmlspecialchars($row['id']); ?>" class="btn btn-small">Edit</a>
-                                    <button type="button" class="btn btn-small btn-danger"
-                                        onclick="confirmDelete('<?php echo htmlspecialchars($row['prefix']); ?>', '<?php echo htmlspecialchars($row['suffix']); ?>', '<?php echo htmlspecialchars($row['title'] ?: 'this resource'); ?>')">
-                                        Delete
-                                    </button>
-                                </td>
-                            </tr>
-                        <?php endwhile; ?>
-                    </tbody>
-                </table>
+                <div class="result-card">
+                    <div style="overflow-x: auto;">
+                        <table style="width: 100%; border-collapse: collapse;">
+                            <thead>
+                                <tr style="border-bottom: 2px solid var(--cds-border-subtle-01);">
+                                    <th style="text-align: left; padding: var(--cds-spacing-05); font-weight: 500; color: var(--cds-text-secondary);">Identifier</th>
+                                    <th style="text-align: left; padding: var(--cds-spacing-05); font-weight: 500; color: var(--cds-text-secondary);">Title</th>
+                                    <th style="text-align: left; padding: var(--cds-spacing-05); font-weight: 500; color: var(--cds-text-secondary);">Target URL</th>
+                                    <th style="text-align: left; padding: var(--cds-spacing-05); font-weight: 500; color: var(--cds-text-secondary);">Created</th>
+                                    <th style="text-align: center; padding: var(--cds-spacing-05); font-weight: 500; color: var(--cds-text-secondary);">Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <?php while ($row = $result->fetch_assoc()): ?>
+                                    <tr style="border-bottom: 1px solid var(--cds-border-subtle-01);">
+                                        <td style="padding: var(--cds-spacing-05);">
+                                            <div style="font-family: 'IBM Plex Mono', monospace; font-size: 0.875rem; color: var(--cds-text-primary);">
+                                                <?php echo htmlspecialchars($row['prefix']); ?>/<strong><?php echo htmlspecialchars($row['suffix']); ?></strong>
+                                            </div>
+                                            <?php if ($row['prefix_name']): ?>
+                                                <div style="font-size: 0.75rem; color: var(--cds-text-secondary); margin-top: var(--cds-spacing-02);">
+                                                    <?php echo htmlspecialchars($row['prefix_name']); ?>
+                                                </div>
+                                            <?php endif; ?>
+                                        </td>
+                                        <td style="padding: var(--cds-spacing-05);">
+                                            <div style="font-weight: 500; color: var(--cds-text-primary);">
+                                                <?php echo htmlspecialchars($row['title'] ?: 'Untitled Resource'); ?>
+                                            </div>
+                                        </td>
+                                        <td style="padding: var(--cds-spacing-05); max-width: 200px;">
+                                            <a href="<?php echo htmlspecialchars($row['target_url']); ?>"
+                                               target="_blank"
+                                               rel="noopener noreferrer"
+                                               class="result-link"
+                                               style="display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
+                                                <?php echo htmlspecialchars($row['target_url']); ?> ↗
+                                            </a>
+                                        </td>
+                                        <td style="padding: var(--cds-spacing-05);">
+                                            <div style="font-size: 0.875rem; color: var(--cds-text-secondary);">
+                                                <?php echo date('M j, Y', strtotime($row['created_at'])); ?>
+                                            </div>
+                                            <div style="font-size: 0.75rem; color: var(--cds-text-placeholder);">
+                                                <?php echo date('g:i A', strtotime($row['created_at'])); ?>
+                                            </div>
+                                        </td>
+                                        <td style="padding: var(--cds-spacing-05); text-align: center;">
+                                            <div style="display: flex; gap: var(--cds-spacing-03); justify-content: center;">
+                                                <a href="edit.php?id=<?php echo htmlspecialchars($row['id']); ?>"
+                                                   class="btn btn-secondary"
+                                                   style="padding: var(--cds-spacing-03) var(--cds-spacing-05); min-width: auto; height: auto; font-size: 0.75rem;">
+                                                    Edit
+                                                </a>
+                                                <button type="button"
+                                                        class="btn"
+                                                        style="background-color: var(--cds-support-error); color: var(--cds-text-on-color); padding: var(--cds-spacing-03) var(--cds-spacing-05); min-width: auto; height: auto; font-size: 0.75rem;"
+                                                        onclick="confirmDelete('<?php echo htmlspecialchars($row['prefix']); ?>', '<?php echo htmlspecialchars($row['suffix']); ?>', '<?php echo htmlspecialchars($row['title'] ?: 'this resource'); ?>')">
+                                                    Delete
+                                                </button>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                <?php endwhile; ?>
+                            </tbody>
+                        </table>
+                    </div>
 
-                <?php if ($total_pages > 1): ?>
-                    <div class="pagination">
-                        <?php if ($page > 1): ?>
-                            <a href="?page=<?php echo $page - 1; ?>&prefix=<?php echo urlencode($prefix_filter); ?>&search=<?php echo urlencode($search_term); ?>">&laquo; Previous</a>
-                        <?php endif; ?>
+                    <?php if ($total_pages > 1): ?>
+                        <div style="display: flex; justify-content: center; align-items: center; gap: var(--cds-spacing-04); margin-top: var(--cds-spacing-07); padding-top: var(--cds-spacing-06); border-top: 1px solid var(--cds-border-subtle-01);">
+                            <?php if ($page > 1): ?>
+                                <a href="?page=<?php echo $page - 1; ?>&prefix=<?php echo urlencode($prefix_filter); ?>&search=<?php echo urlencode($search_term); ?>"
+                                   class="btn btn-secondary"
+                                   style="padding: var(--cds-spacing-04) var(--cds-spacing-05); min-width: auto; height: auto;">
+                                    ← Previous
+                                </a>
+                            <?php endif; ?>
 
-                        <?php
-                        $start_page = max(1, $page - 2);
-                        $end_page = min($total_pages, $page + 2);
+                            <div style="display: flex; gap: var(--cds-spacing-02);">
+                                <?php
+                                $start_page = max(1, $page - 2);
+                                $end_page = min($total_pages, $page + 2);
 
-                        if ($start_page > 1) {
-                            echo '<a href="?page=1&prefix=' . urlencode($prefix_filter) . '&search=' . urlencode($search_term) . '">1</a>';
-                            if ($start_page > 2) {
-                                echo '<span>...</span>';
-                            }
-                        }
+                                if ($start_page > 1) {
+                                    echo '<a href="?page=1&prefix=' . urlencode($prefix_filter) . '&search=' . urlencode($search_term) . '" style="padding: var(--cds-spacing-03) var(--cds-spacing-04); text-decoration: none; color: var(--cds-link-primary); border: 1px solid var(--cds-border-subtle-01); font-size: 0.875rem;">1</a>';
+                                    if ($start_page > 2) {
+                                        echo '<span style="padding: var(--cds-spacing-03) var(--cds-spacing-04); color: var(--cds-text-secondary);">...</span>';
+                                    }
+                                }
 
-                        for ($i = $start_page; $i <= $end_page; $i++) {
-                            if ($i == $page) {
-                                echo '<span class="active">' . $i . '</span>';
-                            } else {
-                                echo '<a href="?page=' . $i . '&prefix=' . urlencode($prefix_filter) . '&search=' . urlencode($search_term) . '">' . $i . '</a>';
-                            }
-                        }
+                                for ($i = $start_page; $i <= $end_page; $i++) {
+                                    if ($i == $page) {
+                                        echo '<span style="padding: var(--cds-spacing-03) var(--cds-spacing-04); background-color: var(--cds-button-primary); color: var(--cds-text-on-color); font-weight: 500; font-size: 0.875rem;">' . $i . '</span>';
+                                    } else {
+                                        echo '<a href="?page=' . $i . '&prefix=' . urlencode($prefix_filter) . '&search=' . urlencode($search_term) . '" style="padding: var(--cds-spacing-03) var(--cds-spacing-04); text-decoration: none; color: var(--cds-link-primary); border: 1px solid var(--cds-border-subtle-01); font-size: 0.875rem;">' . $i . '</a>';
+                                    }
+                                }
 
-                        if ($end_page < $total_pages) {
-                            if ($end_page < $total_pages - 1) {
-                                echo '<span>...</span>';
-                            }
-                            echo '<a href="?page=' . $total_pages . '&prefix=' . urlencode($prefix_filter) . '&search=' . urlencode($search_term) . '">' . $total_pages . '</a>';
-                        }
-                        ?>
+                                if ($end_page < $total_pages) {
+                                    if ($end_page < $total_pages - 1) {
+                                        echo '<span style="padding: var(--cds-spacing-03) var(--cds-spacing-04); color: var(--cds-text-secondary);">...</span>';
+                                    }
+                                    echo '<a href="?page=' . $total_pages . '&prefix=' . urlencode($prefix_filter) . '&search=' . urlencode($search_term) . '" style="padding: var(--cds-spacing-03) var(--cds-spacing-04); text-decoration: none; color: var(--cds-link-primary); border: 1px solid var(--cds-border-subtle-01); font-size: 0.875rem;">' . $total_pages . '</a>';
+                                }
+                                ?>
+                            </div>
 
-                        <?php if ($page < $total_pages): ?>
-                            <a href="?page=<?php echo $page + 1; ?>&prefix=<?php echo urlencode($prefix_filter); ?>&search=<?php echo urlencode($search_term); ?>">Next &raquo;</a>
+                            <?php if ($page < $total_pages): ?>
+                                <a href="?page=<?php echo $page + 1; ?>&prefix=<?php echo urlencode($prefix_filter); ?>&search=<?php echo urlencode($search_term); ?>"
+                                   class="btn btn-secondary"
+                                   style="padding: var(--cds-spacing-04) var(--cds-spacing-05); min-width: auto; height: auto;">
+                                    Next →
+                                </a>
+                            <?php endif; ?>
+                        </div>
+                    <?php endif; ?>
+                </div>
+            <?php else: ?>
+                <div class="notification notification-info">
+                    <div class="notification-icon">ℹ️</div>
+                    <div class="notification-content">
+                        <h3 class="notification-title">No Identifiers Found</h3>
+                        <p class="notification-message">
+                            <?php if (!empty($search_term) || !empty($prefix_filter)): ?>
+                                No identifiers match your current filter criteria. Try adjusting your search terms or clearing the filters.
+                            <?php else: ?>
+                                No identifiers have been created yet. Get started by creating your first identifier.
+                            <?php endif; ?>
+                        </p>
+                        <?php if (!empty($search_term) || !empty($prefix_filter)): ?>
+                            <p class="notification-message">
+                                <a href="?" class="result-link">Clear all filters</a>
+                            </p>
                         <?php endif; ?>
                     </div>
-                <?php endif; ?>
-            <?php else: ?>
-                <div class="no-results">
-                    <p>No identifiers found matching your criteria.</p>
                 </div>
             <?php endif; ?>
-        </div>
+        </main>
 
-        <div class="footer">
-            <p>EdTech UniverseID Admin | &copy; <?php echo date('Y'); ?> Teknologi Pendidikan ID</p>
-            <div class="quick-links">
-                <a href="../deposit">Create New Link</a> |
-                <a href="../list">Public Directory</a> |
-                <a href="prefixes.php">Manage Categories</a>
+        <aside class="info-panel">
+            <h2 class="section-title">Quick Actions</h2>
+
+            <div class="info-item">
+                <h3 class="info-title">Management Tools</h3>
+                <div style="display: flex; flex-direction: column; gap: var(--cds-spacing-04); margin-top: var(--cds-spacing-04);">
+                    <a href="../deposit.php" class="result-link">Create New Identifier</a>
+                    <a href="../bulk_upload.php" class="result-link">Bulk Upload Identifiers</a>
+                    <a href="prefixes.php" class="result-link">Manage Categories</a>
+                    <a href="../list.php" class="result-link">Public Directory</a>
+                </div>
             </div>
-        </div>
+
+            <div class="info-item">
+                <h3 class="info-title">System Stats</h3>
+                <div style="color: var(--cds-text-secondary); font-size: 0.875rem;">
+                    <div style="display: flex; justify-content: space-between; margin-bottom: var(--cds-spacing-03);">
+                        <span>Total Identifiers:</span>
+                        <strong><?php echo $total_records; ?></strong>
+                    </div>
+                    <div style="display: flex; justify-content: space-between; margin-bottom: var(--cds-spacing-03);">
+                        <span>Active Categories:</span>
+                        <strong><?php echo count($prefixes); ?></strong>
+                    </div>
+                    <div style="display: flex; justify-content: space-between;">
+                        <span>Current Page:</span>
+                        <strong><?php echo $page; ?> of <?php echo $total_pages; ?></strong>
+                    </div>
+                </div>
+            </div>
+
+            <div class="info-item">
+                <h3 class="info-title">Recent Activity</h3>
+                <p class="info-description">
+                    Monitor recent changes and additions to the identifier system through the activity logs.
+                </p>
+                <div style="margin-top: var(--cds-spacing-04);">
+                    <a href="#" class="result-link">View Activity Log (Coming Soon)</a>
+                </div>
+            </div>
+
+            <div class="info-item">
+                <h3 class="info-title">Help & Documentation</h3>
+                <div style="display: flex; flex-direction: column; gap: var(--cds-spacing-03); margin-top: var(--cds-spacing-04);">
+                    <a href="../index.php" class="result-link">← Back to Lookup</a>
+                    <a href="#" class="result-link">Admin Guide (Coming Soon)</a>
+                    <a href="#" class="result-link">API Documentation (Coming Soon)</a>
+                </div>
+            </div>
+        </aside>
     </div>
 
     <!-- Delete confirmation modal -->
-    <div id="confirm-modal" class="confirm-modal">
-        <div class="confirm-dialog">
-            <h3>Confirm Deletion</h3>
-            <p>Are you sure you want to delete <strong id="delete-title"></strong>?</p>
-            <p>Identifier: <span id="delete-id"></span></p>
-            <p>This action cannot be undone.</p>
+    <div style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background-color: rgba(0, 0, 0, 0.5); z-index: 1000; justify-content: center; align-items: center;" id="confirm-modal">
+        <div style="background-color: var(--cds-background); padding: var(--cds-spacing-08); max-width: 500px; width: 90%; border: 1px solid var(--cds-border-subtle-01);">
+            <h3 style="margin: 0 0 var(--cds-spacing-06) 0; font-size: 1.25rem; font-weight: 500; color: var(--cds-text-primary);">⚠️ Confirm Deletion</h3>
+
+            <div class="notification notification-error" style="margin-bottom: var(--cds-spacing-06);">
+                <div class="notification-content">
+                    <p class="notification-message" style="margin-bottom: var(--cds-spacing-03);">
+                        Are you sure you want to delete <strong id="delete-title"></strong>?
+                    </p>
+                    <p class="notification-message" style="margin-bottom: var(--cds-spacing-03);">
+                        Identifier: <code id="delete-id"></code>
+                    </p>
+                    <p class="notification-message" style="margin: 0;">
+                        This action cannot be undone and will permanently remove the identifier from the system.
+                    </p>
+                </div>
+            </div>
 
             <form method="post" id="delete-form">
                 <input type="hidden" name="action" value="delete">
                 <input type="hidden" name="prefix" id="delete-prefix">
                 <input type="hidden" name="suffix" id="delete-suffix">
 
-                <div class="confirm-actions">
-                    <button type="button" onclick="closeModal()" class="btn">Cancel</button>
-                    <button type="submit" class="btn btn-danger">Delete</button>
+                <div style="display: flex; justify-content: flex-end; gap: var(--cds-spacing-04);">
+                    <button type="button" onclick="closeModal()" class="btn btn-secondary">Cancel</button>
+                    <button type="submit" class="btn" style="background-color: var(--cds-support-error); color: var(--cds-text-on-color);">
+                        Delete Identifier
+                    </button>
                 </div>
             </form>
         </div>
@@ -603,6 +476,21 @@ $conn->close();
         modal.addEventListener('click', function(event) {
             if (event.target === modal) {
                 closeModal();
+            }
+        });
+
+        // Add keyboard support
+        document.addEventListener('keydown', function(event) {
+            if (event.key === 'Escape' && modal.style.display === 'flex') {
+                closeModal();
+            }
+        });
+
+        // Auto-focus search field
+        document.addEventListener('DOMContentLoaded', function() {
+            const searchField = document.getElementById('search');
+            if (searchField && !searchField.value) {
+                searchField.focus();
             }
         });
     </script>

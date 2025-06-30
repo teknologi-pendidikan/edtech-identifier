@@ -63,372 +63,320 @@ $conn->close();
 
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>EdTech UniverseID - Resource Directory</title>
-    <style>
-        :root {
-            --primary: #4361ee;
-            --primary-dark: #3a56d4;
-            --success: #4caf50;
-            --text: #333;
-            --text-light: #666;
-            --bg: #f5f7fa;
-            --card-bg: #fff;
-            --border: #e1e4e8;
-        }
-
-        body {
-            font-family: 'Segoe UI', -apple-system, BlinkMacSystemFont, sans-serif;
-            background-color: var(--bg);
-            max-width: 900px;
-            margin: 40px auto;
-            padding: 0 20px;
-            line-height: 1.6;
-            color: var(--text);
-        }
-
-        .container {
-            background-color: var(--card-bg);
-            padding: 30px;
-            border-radius: 12px;
-            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.05);
-        }
-
-        h1 {
-            color: var(--primary);
-            margin-top: 0;
-            margin-bottom: 30px;
-            font-size: 26px;
-            text-align: center;
-        }
-
-        .filters {
-            display: flex;
-            gap: 15px;
-            margin-bottom: 25px;
-            align-items: flex-end;
-        }
-
-        .filter-group {
-            flex: 1;
-        }
-
-        label {
-            display: block;
-            margin-bottom: 8px;
-            font-weight: 500;
-        }
-
-        select, input {
-            width: 100%;
-            padding: 10px;
-            border: 1px solid var(--border);
-            border-radius: 6px;
-            font-family: inherit;
-        }
-
-        button {
-            padding: 10px 15px;
-            background-color: var(--primary);
-            color: white;
-            border: none;
-            border-radius: 6px;
-            cursor: pointer;
-            transition: all 0.2s;
-        }
-
-        button:hover {
-            background-color: var(--primary-dark);
-        }
-
-        .resource-table {
-            width: 100%;
-            border-collapse: collapse;
-            margin-top: 20px;
-        }
-
-        .resource-table th {
-            text-align: left;
-            padding: 12px;
-            background-color: rgba(67, 97, 238, 0.1);
-            color: var(--primary);
-        }
-
-        .resource-table td {
-            padding: 12px;
-            border-bottom: 1px solid var(--border);
-        }
-
-        .resource-table tr:hover {
-            background-color: rgba(67, 97, 238, 0.03);
-        }
-
-        .resource-id {
-            font-family: monospace;
-            font-weight: 600;
-            color: var(--primary);
-        }
-
-        .resource-title {
-            font-weight: 500;
-        }
-
-        .resource-description {
-            color: var(--text-light);
-            max-width: 300px;
-            white-space: nowrap;
-            overflow: hidden;
-            text-overflow: ellipsis;
-        }
-
-        .create-link {
-            display: inline-block;
-            margin-top: 30px;
-            padding: 12px 20px;
-            background-color: var(--primary);
-            color: white;
-            border-radius: 6px;
-            text-decoration: none;
-            font-weight: 500;
-            text-align: center;
-        }
-
-        .create-link:hover {
-            background-color: var(--primary-dark);
-        }
-
-        .no-results {
-            text-align: center;
-            padding: 30px;
-            color: var(--text-light);
-        }
-
-        footer {
-            text-align: center;
-            margin-top: 40px;
-            font-size: 13px;
-            color: var(--text-light);
-        }
-
-        .modal {
-            display: none;
-            position: fixed;
-            z-index: 1000;
-            left: 0;
-            top: 0;
-            width: 100%;
-            height: 100%;
-            overflow: auto;
-            background-color: rgba(0, 0, 0, 0.4);
-        }
-
-        .modal-content {
-            background-color: var(--card-bg);
-            margin: 15% auto;
-            padding: 20px;
-            border-radius: 12px;
-            width: 80%;
-            max-width: 500px;
-            text-align: center;
-        }
-
-        .close {
-            color: var(--text-light);
-            float: right;
-            font-size: 28px;
-            font-weight: bold;
-            cursor: pointer;
-        }
-
-        .close:hover,
-        .close:focus {
-            color: var(--text);
-            text-decoration: none;
-        }
-
-        .qr-container {
-            margin: 20px auto;
-        }
-
-        .download-button {
-            padding: 10px 15px;
-            background-color: var(--success);
-            color: white;
-            border: none;
-            border-radius: 6px;
-            cursor: pointer;
-        }
-
-        .download-button:hover {
-            background-color: #43a047;
-        }
-    </style>
+    <title>Public Directory - EdTech Identifier System</title>
+    <link rel="stylesheet" href="styles.css">
+    <link rel="icon" type="image/x-icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>📖</text></svg>">
 </head>
+
 <body>
-    <div class="container">
-        <h1>EdTech Resource Directory</h1>
-
-        <form method="GET" action="">
-            <div class="filters">
-                <div class="filter-group">
-                    <label for="prefix">Filter by Category:</label>
-                    <select name="prefix" id="prefix">
-                        <option value="">All Categories</option>
-                        <?php foreach ($prefixes as $prefix): ?>
-                            <option value="<?php echo htmlspecialchars($prefix['prefix']); ?>"
-                                <?php echo $prefix_filter === $prefix['prefix'] ? 'selected' : ''; ?>>
-                                <?php echo htmlspecialchars($prefix['name']); ?>
-                            </option>
-                        <?php endforeach; ?>
-                    </select>
-                </div>
-
-                <div class="filter-group">
-                    <label for="search">Search:</label>
-                    <input type="text" name="search" id="search"
-                        value="<?php echo htmlspecialchars($search_term); ?>"
-                        placeholder="Search titles and descriptions">
-                </div>
-
-                <button type="submit">Apply Filters</button>
-            </div>
-        </form>
-
-        <?php if ($result->num_rows > 0): ?>
-            <table class="resource-table">
-                <thead>
-                    <tr>
-                        <th>Identifier</th>
-                        <th>Title</th>
-                        <th>Description</th>
-                        <th>Created</th>
-                        <th>Actions</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    <?php while ($row = $result->fetch_assoc()): ?>
-                        <tr>
-                            <td>
-                                <a href="https://<?php echo $_SERVER['HTTP_HOST']; ?>/<?php echo htmlspecialchars($row['prefix']); ?>/<?php echo htmlspecialchars($row['suffix']); ?>"
-                                   class="resource-id" target="_blank">
-                                    <?php echo htmlspecialchars($row['prefix']); ?>/<?php echo htmlspecialchars($row['suffix']); ?>
-                                </a>
-                            </td>
-                            <td class="resource-title">
-                                <?php echo htmlspecialchars($row['title'] ?: 'Untitled'); ?>
-                            </td>
-                            <td class="resource-description">
-                                <?php echo htmlspecialchars($row['description'] ?: 'No description available'); ?>
-                            </td>
-                            <td>
-                                <?php echo date('M j, Y', strtotime($row['created_at'])); ?>
-                            </td>
-                            <td>
-                                <button class="qr-button"
-                                    data-url="https://<?php echo $_SERVER['HTTP_HOST']; ?>/<?php echo htmlspecialchars($row['prefix']); ?>/<?php echo htmlspecialchars($row['suffix']); ?>"
-                                    data-title="<?php echo htmlspecialchars($row['title'] ?: 'Resource'); ?>">
-                                    QR
-                                </button>
-                            </td>
-                        </tr>
-                    <?php endwhile; ?>
-                </tbody>
-            </table>
-
-            <div id="qr-modal" class="modal">
-                <div class="modal-content">
-                    <span class="close">&times;</span>
-                    <h3 id="qr-title">QR Code</h3>
-                    <div id="qr-container" class="qr-container"></div>
-                    <p class="qr-url"></p>
-                    <button id="download-qr" class="download-button">Download QR Code</button>
-                </div>
-            </div>
-        <?php else: ?>
-            <div class="no-results">
-                <p>No resources found matching your criteria.</p>
-            </div>
-        <?php endif; ?>
-
-        <div style="text-align: center; margin-top: 30px;">
-            <a href="deposit" class="create-link">Create New Resource Link</a>
+    <header class="page-header">
+        <div class="header-content">
+            <h1 class="page-title">Public Directory</h1>
+            <p class="page-subtitle">Browse and discover educational technology resources</p>
         </div>
+    </header>
+
+    <div class="main-container">
+        <main class="content-section">
+            <h2 class="section-title">Resource Directory</h2>
+            <p class="helper-text">
+                Explore the complete collection of registered EdTech identifiers. Use the filters below to find specific resources or browse by category.
+            </p>
+
+            <form method="GET" class="result-card">
+                <h3 class="result-title">🔍 Search and Filter</h3>
+
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: var(--cds-spacing-06); margin-bottom: var(--cds-spacing-06);">
+                    <div class="form-group">
+                        <label for="prefix" class="form-label">Filter by Category</label>
+                        <select name="prefix" id="prefix" class="text-input">
+                            <option value="">All Categories</option>
+                            <?php foreach ($prefixes as $prefix): ?>
+                                <option value="<?php echo htmlspecialchars($prefix['prefix']); ?>"
+                                    <?php echo $prefix_filter === $prefix['prefix'] ? 'selected' : ''; ?>>
+                                    <?php echo htmlspecialchars($prefix['name']); ?>
+                                </option>
+                            <?php endforeach; ?>
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="search" class="form-label">Search Resources</label>
+                        <input type="text"
+                               name="search"
+                               id="search"
+                               class="text-input"
+                               value="<?php echo htmlspecialchars($search_term); ?>"
+                               placeholder="Search by title or description">
+                    </div>
+                </div>
+
+                <div style="display: flex; justify-content: space-between; align-items: center;">
+                    <div style="color: var(--cds-text-secondary); font-size: 0.875rem;">
+                        <?php if (!empty($prefix_filter) || !empty($search_term)): ?>
+                            Filtered results
+                        <?php else: ?>
+                            Showing all resources
+                        <?php endif; ?>
+                    </div>
+                    <div style="display: flex; gap: var(--cds-spacing-04);">
+                        <?php if (!empty($prefix_filter) || !empty($search_term)): ?>
+                            <a href="?" class="btn btn-secondary">Clear Filters</a>
+                        <?php endif; ?>
+                        <button type="submit" class="btn btn-primary">Apply Filters</button>
+                    </div>
+                </div>
+            </form>
+
+            <?php if ($result->num_rows > 0): ?>
+                <div class="result-card">
+                    <div style="overflow-x: auto;">
+                        <table style="width: 100%; border-collapse: collapse;">
+                            <thead>
+                                <tr style="border-bottom: 2px solid var(--cds-border-subtle-01);">
+                                    <th style="text-align: left; padding: var(--cds-spacing-05); font-weight: 500; color: var(--cds-text-secondary);">Identifier</th>
+                                    <th style="text-align: left; padding: var(--cds-spacing-05); font-weight: 500; color: var(--cds-text-secondary);">Title</th>
+                                    <th style="text-align: left; padding: var(--cds-spacing-05); font-weight: 500; color: var(--cds-text-secondary);">Description</th>
+                                    <th style="text-align: left; padding: var(--cds-spacing-05); font-weight: 500; color: var(--cds-text-secondary);">Created</th>
+                                    <th style="text-align: center; padding: var(--cds-spacing-05); font-weight: 500; color: var(--cds-text-secondary);">Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <?php while ($row = $result->fetch_assoc()): ?>
+                                    <tr style="border-bottom: 1px solid var(--cds-border-subtle-01);">
+                                        <td style="padding: var(--cds-spacing-05);">
+                                            <div style="font-family: 'IBM Plex Mono', monospace; font-size: 0.875rem; margin-bottom: var(--cds-spacing-02);">
+                                                <a href="https://<?php echo $_SERVER['HTTP_HOST']; ?>/<?php echo htmlspecialchars($row['prefix']); ?>/<?php echo htmlspecialchars($row['suffix']); ?>"
+                                                   class="result-link" target="_blank" rel="noopener noreferrer">
+                                                    <?php echo htmlspecialchars($row['prefix']); ?>/<strong><?php echo htmlspecialchars($row['suffix']); ?></strong> ↗
+                                                </a>
+                                            </div>
+                                            <?php if ($row['prefix_name']): ?>
+                                                <div style="font-size: 0.75rem; color: var(--cds-text-secondary);">
+                                                    <?php echo htmlspecialchars($row['prefix_name']); ?>
+                                                </div>
+                                            <?php endif; ?>
+                                        </td>
+                                        <td style="padding: var(--cds-spacing-05);">
+                                            <div style="font-weight: 500; color: var(--cds-text-primary);">
+                                                <?php echo htmlspecialchars($row['title'] ?: 'Untitled Resource'); ?>
+                                            </div>
+                                        </td>
+                                        <td style="padding: var(--cds-spacing-05); max-width: 300px;">
+                                            <div style="color: var(--cds-text-secondary); font-size: 0.875rem; line-height: 1.4;">
+                                                <?php
+                                                $description = $row['description'] ?: 'No description available';
+                                                echo htmlspecialchars(strlen($description) > 120 ? substr($description, 0, 120) . '...' : $description);
+                                                ?>
+                                            </div>
+                                        </td>
+                                        <td style="padding: var(--cds-spacing-05);">
+                                            <div style="font-size: 0.875rem; color: var(--cds-text-secondary);">
+                                                <?php echo date('M j, Y', strtotime($row['created_at'])); ?>
+                                            </div>
+                                            <div style="font-size: 0.75rem; color: var(--cds-text-placeholder);">
+                                                <?php echo date('g:i A', strtotime($row['created_at'])); ?>
+                                            </div>
+                                        </td>
+                                        <td style="padding: var(--cds-spacing-05); text-align: center;">
+                                            <button type="button"
+                                                    class="btn btn-secondary"
+                                                    style="padding: var(--cds-spacing-03) var(--cds-spacing-05); min-width: auto; height: auto; font-size: 0.75rem;"
+                                                    onclick="showQRCode('https://<?php echo $_SERVER['HTTP_HOST']; ?>/<?php echo htmlspecialchars($row['prefix']); ?>/<?php echo htmlspecialchars($row['suffix']); ?>', '<?php echo htmlspecialchars(addslashes($row['title'] ?: 'Resource')); ?>')">
+                                                QR Code
+                                            </button>
+                                        </td>
+                                    </tr>
+                                <?php endwhile; ?>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            <?php else: ?>
+                <div class="notification notification-info">
+                    <div class="notification-icon">ℹ️</div>
+                    <div class="notification-content">
+                        <h3 class="notification-title">No Resources Found</h3>
+                        <p class="notification-message">
+                            <?php if (!empty($search_term) || !empty($prefix_filter)): ?>
+                                No resources match your current filter criteria. Try adjusting your search terms or clearing the filters.
+                            <?php else: ?>
+                                No resources have been registered yet. Be the first to create an identifier.
+                            <?php endif; ?>
+                        </p>
+                        <?php if (!empty($search_term) || !empty($prefix_filter)): ?>
+                            <p class="notification-message">
+                                <a href="?" class="result-link">Clear all filters</a>
+                            </p>
+                        <?php endif; ?>
+                    </div>
+                </div>
+            <?php endif; ?>
+
+            <div style="text-align: center; margin-top: var(--cds-spacing-08);">
+                <a href="deposit.php" class="btn btn-primary">Create New Identifier</a>
+            </div>
+        </main>
+
+        <aside class="info-panel">
+            <h2 class="section-title">Directory Guide</h2>
+
+            <div class="info-item">
+                <h3 class="info-title">About This Directory</h3>
+                <p class="info-description">
+                    This public directory contains all registered EdTech identifiers. Each entry represents a unique educational resource with its own persistent identifier.
+                </p>
+            </div>
+
+            <div class="info-item">
+                <h3 class="info-title">How to Use</h3>
+                <ul style="color: var(--cds-text-secondary); font-size: 0.875rem; margin: var(--cds-spacing-04) 0; padding-left: var(--cds-spacing-06);">
+                    <li>Click on identifiers to visit the resources directly</li>
+                    <li>Use filters to narrow down by category</li>
+                    <li>Search by title or description keywords</li>
+                    <li>Generate QR codes for easy mobile access</li>
+                </ul>
+            </div>
+
+            <div class="info-item">
+                <h3 class="info-title">QR Code Feature</h3>
+                <p class="info-description">
+                    Generate QR codes for any resource to enable quick mobile access. Perfect for sharing in presentations, documents, or physical materials.
+                </p>
+            </div>
+
+            <div class="info-item">
+                <h3 class="info-title">Resource Categories</h3>
+                <p class="info-description">
+                    Resources are organized by prefixes that indicate their type or origin. Common categories include:
+                </p>
+                <div style="color: var(--cds-text-secondary); font-size: 0.875rem; margin-top: var(--cds-spacing-04);">
+                    <?php if (!empty($prefixes)): ?>
+                        <?php foreach (array_slice($prefixes, 0, 4) as $prefix): ?>
+                            <div style="margin-bottom: var(--cds-spacing-02);">
+                                <strong><?php echo htmlspecialchars($prefix['name']); ?></strong>
+                            </div>
+                        <?php endforeach; ?>
+                        <?php if (count($prefixes) > 4): ?>
+                            <div style="color: var(--cds-text-placeholder);">
+                                ...and <?php echo count($prefixes) - 4; ?> more categories
+                            </div>
+                        <?php endif; ?>
+                    <?php endif; ?>
+                </div>
+            </div>
+
+            <div class="info-item">
+                <h3 class="info-title">Quick Actions</h3>
+                <div style="display: flex; flex-direction: column; gap: var(--cds-spacing-04); margin-top: var(--cds-spacing-04);">
+                    <a href="index.php" class="result-link">← Back to Lookup</a>
+                    <a href="deposit.php" class="result-link">Create New Identifier</a>
+                    <a href="bulk_upload.php" class="result-link">Bulk Upload</a>
+                    <a href="admin/" class="result-link">Admin Panel</a>
+                </div>
+            </div>
+        </aside>
     </div>
 
-    <footer>
-        <p>DPTSI | &copy; <?php echo date('Y'); ?> Teknologi Pendidikan ID</p>
-    </footer>
+    <!-- QR Code Modal -->
+    <div style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background-color: rgba(0, 0, 0, 0.5); z-index: 1000; justify-content: center; align-items: center;" id="qr-modal">
+        <div style="background-color: var(--cds-background); padding: var(--cds-spacing-08); max-width: 500px; width: 90%; border: 1px solid var(--cds-border-subtle-01); text-align: center;">
+            <h3 style="margin: 0 0 var(--cds-spacing-06) 0; font-size: 1.25rem; font-weight: 500; color: var(--cds-text-primary);" id="qr-title">QR Code</h3>
+
+            <div style="display: flex; justify-content: center; margin: var(--cds-spacing-06) 0;" id="qr-container">
+                <!-- QR code will be generated here -->
+            </div>
+
+            <div style="background-color: var(--cds-layer-01); padding: var(--cds-spacing-04); border-radius: 4px; margin: var(--cds-spacing-06) 0;">
+                <div style="font-size: 0.875rem; color: var(--cds-text-secondary); margin-bottom: var(--cds-spacing-02);">Target URL:</div>
+                <div style="font-family: 'IBM Plex Mono', monospace; font-size: 0.875rem; color: var(--cds-text-primary); word-break: break-all;" id="qr-url">
+                    <!-- URL will be displayed here -->
+                </div>
+            </div>
+
+            <div style="display: flex; justify-content: center; gap: var(--cds-spacing-04);">
+                <button type="button" onclick="closeQRModal()" class="btn btn-secondary">Close</button>
+                <button type="button" onclick="downloadQRCode()" class="btn btn-primary">Download QR Code</button>
+            </div>
+        </div>
+    </div>
 
     <!-- Include QRCode.js library -->
     <script src="https://cdn.jsdelivr.net/npm/qrcodejs@1.0.0/qrcode.min.js"></script>
 
     <script>
-        // Get modal elements
-        const modal = document.getElementById('qr-modal');
-        const closeBtn = document.querySelector('.close');
+        const qrModal = document.getElementById('qr-modal');
         const qrContainer = document.getElementById('qr-container');
         const qrTitle = document.getElementById('qr-title');
-        const qrUrlDisplay = document.querySelector('.qr-url');
-        const downloadBtn = document.getElementById('download-qr');
+        const qrUrl = document.getElementById('qr-url');
+        let currentQRCode = null;
 
-        // QR code instance
-        let qrcode = null;
+        function showQRCode(url, title) {
+            // Clear previous QR code
+            qrContainer.innerHTML = '';
 
-        // Add event listeners to QR buttons
-        document.querySelectorAll('.qr-button').forEach(button => {
-            button.addEventListener('click', function() {
-                const url = this.getAttribute('data-url');
-                const title = this.getAttribute('data-title');
-
-                // Clear previous QR code
-                qrContainer.innerHTML = '';
-
-                // Create new QR code
-                qrcode = new QRCode(qrContainer, {
-                    text: url,
-                    width: 200,
-                    height: 200,
-                    colorDark: "#000000",
-                    colorLight: "#ffffff",
-                    correctLevel: QRCode.CorrectLevel.H
-                });
-
-                // Update modal content
-                qrTitle.textContent = 'QR Code for: ' + title;
-                qrUrlDisplay.textContent = url;
-
-                // Show modal
-                modal.style.display = 'block';
+            // Create new QR code
+            currentQRCode = new QRCode(qrContainer, {
+                text: url,
+                width: 200,
+                height: 200,
+                colorDark: "#161616",
+                colorLight: "#ffffff",
+                correctLevel: QRCode.CorrectLevel.H
             });
-        });
 
-        // Close modal when clicking the × button
-        closeBtn.addEventListener('click', function() {
-            modal.style.display = 'none';
-        });
+            // Update modal content
+            qrTitle.textContent = `QR Code for: ${title}`;
+            qrUrl.textContent = url;
 
-        // Close modal when clicking outside of it
-        window.addEventListener('click', function(event) {
-            if (event.target === modal) {
-                modal.style.display = 'none';
-            }
-        });
+            // Show modal
+            qrModal.style.display = 'flex';
+        }
 
-        // Download QR code as image
-        downloadBtn.addEventListener('click', function() {
+        function closeQRModal() {
+            qrModal.style.display = 'none';
+        }
+
+        function downloadQRCode() {
             const canvas = qrContainer.querySelector('canvas');
             if (canvas) {
                 const url = canvas.toDataURL('image/png');
-                const a = document.createElement('a');
-                a.href = url;
-                a.download = 'qrcode.png';
-                document.body.appendChild(a);
-                a.click();
-                document.body.removeChild(a);
+                const link = document.createElement('a');
+                link.href = url;
+                link.download = 'edtech-identifier-qr.png';
+                link.style.display = 'none';
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+            }
+        }
+
+        // Close modal when clicking outside
+        qrModal.addEventListener('click', function(event) {
+            if (event.target === qrModal) {
+                closeQRModal();
+            }
+        });
+
+        // Add keyboard support
+        document.addEventListener('keydown', function(event) {
+            if (event.key === 'Escape' && qrModal.style.display === 'flex') {
+                closeQRModal();
+            }
+        });
+
+        // Auto-focus search field
+        document.addEventListener('DOMContentLoaded', function() {
+            const searchField = document.getElementById('search');
+            if (searchField && !searchField.value) {
+                searchField.focus();
             }
         });
     </script>
 </body>
+
 </html>
