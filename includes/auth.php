@@ -252,13 +252,16 @@ function has_ip_bypass()
 // Set secure session configuration
 function configure_secure_session()
 {
-    // Secure session settings
-    ini_set('session.cookie_httponly', 1);
-    ini_set('session.cookie_secure', isset($_SERVER['HTTPS']));
-    ini_set('session.use_strict_mode', 1);
-    ini_set('session.cookie_samesite', 'Strict');
+    // Only set session ini settings if session is not already active
+    if (session_status() === PHP_SESSION_NONE) {
+        // Secure session settings
+        ini_set('session.cookie_httponly', 1);
+        ini_set('session.cookie_secure', isset($_SERVER['HTTPS']));
+        ini_set('session.use_strict_mode', 1);
+        ini_set('session.cookie_samesite', 'Strict');
+    }
 
-    // Regenerate session ID periodically
+    // Regenerate session ID periodically (this can be done when session is active)
     if (!isset($_SESSION['last_regeneration'])) {
         $_SESSION['last_regeneration'] = time();
     } elseif (time() - $_SESSION['last_regeneration'] > 300) { // Every 5 minutes

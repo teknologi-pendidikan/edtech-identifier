@@ -285,5 +285,83 @@ function log_security_event($event, $details = [])
     // In production, this should write to a proper log file
     error_log('SECURITY: ' . json_encode($log_entry));
 }
+
+// Account lockout functionality
+function record_failed_login($username)
+{
+    $key = 'failed_login_' . $username;
+
+    if (!isset($_SESSION[$key])) {
+        $_SESSION[$key] = [
+            'count' => 0,
+            'first_attempt' => time(),
+            'last_attempt' => time()
+        ];
+    }
+
+    $_SESSION[$key]['count']++;
+    $_SESSION[$key]['last_attempt'] = time();
+
+    log_security_event('failed_login_attempt', [
+        'username' => $username,
+        'attempt_count' => $_SESSION[$key]['count']
+    ]);
+}
+
+function clear_failed_attempts($username)
+{
+    $key = 'failed_login_' . $username;
+    if (isset($_SESSION[$key])) {
+        unset($_SESSION[$key]);
+        log_security_event('failed_attempts_cleared', ['username' => $username]);
+    }
+}
+
+function is_locked_out($username)
+{
+    $key = 'failed_login_' . $username;
+
+    if (!isset($_SESSION[$key])) {
+        return false;
+    }
+
+    $failed_data = $_SESSION[$key];
+    $max_attempts = 5; // Maximum failed attempts before lockout
+    $lockout_duration = 900; // 15 minutes lockout duration
+
+    // Check if account should be locked out
+    if ($failed_data['count'] >= $max_attempts) {
+        // Check if lockout period has expired
+        if (time() - $failed_data['last_attempt'] > $lockout_duration) {
+            // Lockout period expired, clear failed attempts
+            clear_failed_attempts($username);
+            return false;
+        }
+
+        // Still in lockout period
+        return true;
+    }
+
+    return false;
+}
+
+function get_lockout_time_remaining($username)
+{
+    $key = 'failed_login_' . $username;
+
+    if (!isset($_SESSION[$key])) {
+        return 0;
+    }
+
+    $failed_data = $_SESSION[$key];
+    $lockout_duration = 900; // 15 minutes
+
+    if ($failed_data['count'] >= 5) {
+        $time_remaining = $lockout_duration - (time() - $failed_data['last_attempt']);
+        return max(0, $time_remaining);
+    }
+
+    return 0;
+}
 ?>
 
