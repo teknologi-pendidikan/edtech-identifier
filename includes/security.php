@@ -182,10 +182,85 @@ function validate_csv_file($file_path)
     return $errors;
 }
 
-// Rate limiting functionality
+// Enhanced persistent rate limiting using file system
+function check_persistent_rate_limit($action, $identifier, $max_attempts = 5, $time_window = 300) {
+    $hash = md5($action . '_' . $identifier);
+    $file_path = sys_get_temp_dir() . '/edtech_rate_' . $hash;
+
+    $current_time = time();
+
+    if (!file_exists($file_path)) {
+        $rate_data = ['count' => 1, 'reset_time' => $current_time + $time_window];
+        file_put_contents($file_path, json_encode($rate_data), LOCK_EX);
+        return true;
+    }
+
+    $rate_data = json_decode(file_get_contents($file_path), true);
+    if (!$rate_data) {
+        $rate_data = ['count' => 1, 'reset_time' => $current_time + $time_window];
+        file_put_contents($file_path, json_encode($rate_data), LOCK_EX);
+        return true;
+    }
+
+    // Reset if time window has passed
+    if ($current_time > $rate_data['reset_time']) {
+        $rate_data = ['count' => 1, 'reset_time' => $current_time + $time_window];
+        file_put_contents($file_path, json_encode($rate_data), LOCK_EX);
+        return true;
+    }
+
+    // Check if limit exceeded
+    if ($rate_data['count'] >= $max_attempts) {
+        return false;
+    }
+
+    // Increment counter
+    $rate_data['count']++;
+    file_put_contents($file_path, json_encode($rate_data), LOCK_EX);
+    return true;
+}
+
+function record_persistent_failed_attempt($action, $identifier) {
+    $hash = md5($action . '_failed_' . $identifier);
+    $file_path = sys_get_temp_dir() . '/edtech_failed_' . $hash;
+
+    $data = [];
+    if (file_exists($file_path)) {
+        $data = json_decode(file_get_contents($file_path), true) ?: [];
+    }
+
+    $data[] = [
+        'timestamp' => time(),
+        'ip' => $_SERVER['REMOTE_ADDR'] ?? 'unknown',
+        'user_agent' => $_SERVER['HTTP_USER_AGENT'] ?? 'unknown'
+    ];
+
+    // Keep only last 100 attempts
+    $data = array_slice($data, -100);
+
+    file_put_contents($file_path, json_encode($data), LOCK_EX);
+}
+
+function clear_persistent_rate_limit($action, $identifier) {
+    $hash = md5($action . '_' . $identifier);
+    $file_path = sys_get_temp_dir() . '/edtech_rate_' . $hash;
+
+    if (file_exists($file_path)) {
+        unlink($file_path);
+    }
+}
+
+// Fallback session-based rate limiting if file system fails
 function check_rate_limit($action, $max_attempts = 5, $time_window = 300)
 {
-    $key = 'rate_limit_' . $action . '_' . $_SERVER['REMOTE_ADDR'];
+    // Try persistent rate limiting first
+    $ip = $_SERVER['REMOTE_ADDR'] ?? 'unknown';
+    if (check_persistent_rate_limit($action, $ip, $max_attempts, $time_window)) {
+        return true;
+    }
+
+    // Fallback to session-based rate limiting
+    $key = 'rate_limit_' . $action . '_' . $ip;
 
     if (!isset($_SESSION[$key])) {
         $_SESSION[$key] = ['count' => 0, 'reset_time' => time() + $time_window];
@@ -286,11 +361,11 @@ function log_security_event($event, $details = [])
     error_log('SECURITY: ' . json_encode($log_entry));
 }
 
-// Account lockout functionality
+// Enhanced account lockout functionality with file-based persistence
 function record_failed_login($username)
 {
+    // Session-based tracking (for current session)
     $key = 'failed_login_' . $username;
-
     if (!isset($_SESSION[$key])) {
         $_SESSION[$key] = [
             'count' => 0,
@@ -298,47 +373,83 @@ function record_failed_login($username)
             'last_attempt' => time()
         ];
     }
-
     $_SESSION[$key]['count']++;
     $_SESSION[$key]['last_attempt'] = time();
 
+    // File-based tracking (persistent across sessions)
+    $file_path = sys_get_temp_dir() . '/edtech_failed_login_' . md5($username);
+    $data = [
+        'count' => 1,
+        'first_attempt' => time(),
+        'last_attempt' => time()
+    ];
+
+    if (file_exists($file_path)) {
+        $existing_data = json_decode(file_get_contents($file_path), true);
+        if ($existing_data && time() - $existing_data['first_attempt'] < 3600) { // Within 1 hour
+            $data = $existing_data;
+            $data['count']++;
+            $data['last_attempt'] = time();
+        }
+    }
+
+    file_put_contents($file_path, json_encode($data), LOCK_EX);
+
     log_security_event('failed_login_attempt', [
         'username' => $username,
-        'attempt_count' => $_SESSION[$key]['count']
+        'attempt_count' => $data['count'],
+        'ip' => $_SERVER['REMOTE_ADDR'] ?? 'unknown'
     ]);
 }
 
 function clear_failed_attempts($username)
 {
+    // Clear session data
     $key = 'failed_login_' . $username;
     if (isset($_SESSION[$key])) {
         unset($_SESSION[$key]);
-        log_security_event('failed_attempts_cleared', ['username' => $username]);
     }
+
+    // Clear file-based data
+    $file_path = sys_get_temp_dir() . '/edtech_failed_login_' . md5($username);
+    if (file_exists($file_path)) {
+        unlink($file_path);
+    }
+
+    log_security_event('failed_attempts_cleared', ['username' => $username]);
 }
 
 function is_locked_out($username)
 {
-    $key = 'failed_login_' . $username;
+    $max_attempts = 5;
+    $lockout_duration = 900; // 15 minutes
 
+    // Check file-based tracking first (more persistent)
+    $file_path = sys_get_temp_dir() . '/edtech_failed_login_' . md5($username);
+    if (file_exists($file_path)) {
+        $data = json_decode(file_get_contents($file_path), true);
+        if ($data && $data['count'] >= $max_attempts) {
+            if (time() - $data['last_attempt'] > $lockout_duration) {
+                // Lockout expired, clear the file
+                unlink($file_path);
+                return false;
+            }
+            return true;
+        }
+    }
+
+    // Fallback to session-based tracking
+    $key = 'failed_login_' . $username;
     if (!isset($_SESSION[$key])) {
         return false;
     }
 
     $failed_data = $_SESSION[$key];
-    $max_attempts = 5; // Maximum failed attempts before lockout
-    $lockout_duration = 900; // 15 minutes lockout duration
-
-    // Check if account should be locked out
     if ($failed_data['count'] >= $max_attempts) {
-        // Check if lockout period has expired
         if (time() - $failed_data['last_attempt'] > $lockout_duration) {
-            // Lockout period expired, clear failed attempts
             clear_failed_attempts($username);
             return false;
         }
-
-        // Still in lockout period
         return true;
     }
 
@@ -347,15 +458,25 @@ function is_locked_out($username)
 
 function get_lockout_time_remaining($username)
 {
-    $key = 'failed_login_' . $username;
+    $lockout_duration = 900; // 15 minutes
 
+    // Check file-based first
+    $file_path = sys_get_temp_dir() . '/edtech_failed_login_' . md5($username);
+    if (file_exists($file_path)) {
+        $data = json_decode(file_get_contents($file_path), true);
+        if ($data && $data['count'] >= 5) {
+            $time_remaining = $lockout_duration - (time() - $data['last_attempt']);
+            return max(0, $time_remaining);
+        }
+    }
+
+    // Fallback to session-based
+    $key = 'failed_login_' . $username;
     if (!isset($_SESSION[$key])) {
         return 0;
     }
 
     $failed_data = $_SESSION[$key];
-    $lockout_duration = 900; // 15 minutes
-
     if ($failed_data['count'] >= 5) {
         $time_remaining = $lockout_duration - (time() - $failed_data['last_attempt']);
         return max(0, $time_remaining);

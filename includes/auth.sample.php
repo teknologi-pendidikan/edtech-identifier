@@ -1,56 +1,38 @@
 <?php
-session_start();
+/**
+ * ⚠️  DEPRECATED: This file has been replaced with a secure setup system
+ *
+ * DO NOT USE THIS FILE - It stores passwords in plain text which is insecure!
+ *
+ * Instead, use the new secure setup system:
+ *
+ * 1. Run the setup script:
+ *    php setup.php
+ *
+ * 2. Or copy the environment template:
+ *    cp .env.template .env
+ *    # Then edit .env with your secure settings
+ *
+ * 3. Set proper file permissions:
+ *    chmod 600 .env
+ *
+ * The new system provides:
+ * ✅ Encrypted password storage (bcrypt)
+ * ✅ Persistent rate limiting
+ * ✅ Enhanced session security
+ * ✅ Account lockout protection
+ * ✅ IP bypass security (optional)
+ * ✅ CSRF protection
+ * ✅ Comprehensive logging
+ *
+ * See AUTH_SECURITY_FIXES.md for complete documentation.
+ */
 
-// Simple authentication configuration
-$auth_config = [
-    'username' => '',
-    'password' => '', // You should change this to a secure password
-    'session_timeout' => 3600 // 1 hour in seconds
-];
-
-// Check if user is logged in
-function is_authenticated()
-{
-    if (!isset($_SESSION['auth']) || !isset($_SESSION['auth_time'])) {
-        return false;
-    }
-
-    global $auth_config;
-
-    // Check if session has expired
-    if (time() - $_SESSION['auth_time'] > $auth_config['session_timeout']) {
-        // Session expired, log out
-        logout();
-        return false;
-    }
-
-    // Renew session time
-    $_SESSION['auth_time'] = time();
-    return true;
-}
-
-// Authenticate user
-function authenticate($username, $password)
-{
-    global $auth_config;
-
-    if ($username === $auth_config['username'] && $password === $auth_config['password']) {
-        $_SESSION['auth'] = true;
-        $_SESSION['auth_time'] = time();
-        $_SESSION['username'] = $username;
-        return true;
-    }
-
-    return false;
-}
-
-// Log out user
-function logout()
-{
-    unset($_SESSION['auth']);
-    unset($_SESSION['auth_time']);
-    unset($_SESSION['username']);
-    session_destroy();
-}
+die("❌ This authentication method is deprecated and insecure!\n\n" .
+    "Please use the new secure setup system:\n" .
+    "1. Run: php setup.php\n" .
+    "2. Or configure .env file manually\n" .
+    "3. See AUTH_SECURITY_FIXES.md for details\n\n" .
+    "The old plain-text password system has been disabled for security.\n");
 ?>
 

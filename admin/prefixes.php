@@ -348,7 +348,7 @@ $conn->close();
                 <div
                     style="display: flex; flex-direction: column; gap: var(--cds-spacing-04); margin-top: var(--cds-spacing-04);">
                     <a href="index.php" class="result-link">← Back to Dashboard</a>
-                    <a href="../deposit.php" class="result-link">Create New Identifier</a>
+                    <!-- Create New Identifier functionality will be implemented via API -->
                     <a href="../list.php" class="result-link">Browse All Identifiers</a>
                 </div>
             </div>

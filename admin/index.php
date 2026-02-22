@@ -216,8 +216,7 @@ $conn->close();
             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: var(--cds-spacing-07);">
                 <h2 class="section-title">Identifier Management</h2>
                 <div style="display: flex; gap: var(--cds-spacing-04);">
-                    <a href="../deposit.php" class="btn btn-primary">Create New Identifier</a>
-                    <a href="../bulk_upload.php" class="btn btn-secondary">Bulk Upload</a>
+                    <!-- Create New Identifier functionality will be implemented via API -->
                 </div>
             </div>
 
@@ -403,7 +402,7 @@ $conn->close();
             <div class="info-item">
                 <h3 class="info-title">Management Tools</h3>
                 <div style="display: flex; flex-direction: column; gap: var(--cds-spacing-04); margin-top: var(--cds-spacing-04);">
-                    <a href="../deposit.php" class="result-link">Create New Identifier</a>
+                    <!-- Create New Identifier functionality will be implemented via API -->
                     <a href="../bulk_upload.php" class="result-link">Bulk Upload Identifiers</a>
                     <a href="prefixes.php" class="result-link">Manage Categories</a>
                     <a href="../list.php" class="result-link">Public Directory</a>

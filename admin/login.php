@@ -8,9 +8,16 @@ set_security_headers();
 $error = '';
 $lockout_message = '';
 $ip_bypass_active = false;
+$system_not_configured = false;
+
+// Check if system is configured
+if (empty($auth_config['username']) || empty($auth_config['password_hash'])) {
+    $system_not_configured = true;
+    $error = 'System not configured. Run setup.php to configure admin credentials.';
+}
 
 // Check if user is accessing from trusted IP
-if (is_trusted_ip()) {
+if (!$system_not_configured && is_trusted_ip()) {
     $ip_bypass_active = true;
     // Auto-redirect to admin if from trusted IP
     if (auto_authenticate_trusted_ip()) {
@@ -20,16 +27,16 @@ if (is_trusted_ip()) {
 }
 
 // If already logged in, redirect to admin page
-if (is_authenticated()) {
+if (!$system_not_configured && is_authenticated()) {
     header('Location: index.php');
     exit;
 }
 
 // Handle login form submission
-if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && !$system_not_configured) {
     // Check rate limiting for login attempts
-    if (!check_rate_limit('login_page', 5, 300)) { // 5 attempts per 5 minutes
-        log_security_event('login_rate_limit_exceeded', ['ip' => $_SERVER['REMOTE_ADDR']]);
+    if (!check_persistent_rate_limit('login_page', get_real_ip_address(), 5, 300)) {
+        log_security_event('login_rate_limit_exceeded', ['ip' => get_real_ip_address()]);
         $error = 'Too many login attempts. Please wait 5 minutes before trying again.';
     } else {
         $username = validate_text_input($_POST['username'] ?? '', 50);
@@ -41,13 +48,23 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         } else {
             // Check if user is locked out
             if (is_locked_out($username)) {
-                $lockout_message = 'Account temporarily locked due to multiple failed login attempts. Please try again later.';
-                log_security_event('login_attempt_while_locked', ['username' => $username]);
+                $remaining_seconds = get_lockout_time_remaining($username);
+                $remaining_minutes = ceil($remaining_seconds / 60);
+                $lockout_message = "Account temporarily locked due to multiple failed login attempts. Please try again in {$remaining_minutes} minute(s).";
+                log_security_event('login_attempt_while_locked', [
+                    'username' => $username,
+                    'remaining_seconds' => $remaining_seconds
+                ]);
             } else {
-                if (authenticate($username, $password)) {
+                $auth_result = authenticate($username, $password);
+
+                if ($auth_result === true) {
                     // Redirect to admin page after successful login
                     header('Location: index.php');
                     exit;
+                } elseif (is_array($auth_result) && isset($auth_result['error']) && $auth_result['error'] === 'system_not_configured') {
+                    $system_not_configured = true;
+                    $error = 'System not configured properly. Please run setup.php.';
                 } else {
                     $error = 'Invalid username or password.';
                     // Additional failed attempts are logged in the authenticate function
@@ -191,6 +208,32 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             font-size: 14px;
             color: #6c757d;
         }
+
+        .setup-notice {
+            background-color: #fff3cd;
+            border: 1px solid #ffc107;
+            color: #664d03;
+            padding: 20px;
+            border-radius: 6px;
+            margin: 20px 0;
+        }
+
+        .setup-notice h3 {
+            margin-top: 0;
+            color: #cc8800;
+        }
+
+        .setup-notice code {
+            background: #f8f4e6;
+            padding: 2px 6px;
+            border-radius: 3px;
+            font-family: 'Courier New', monospace;
+        }
+
+        .setup-notice ol {
+            margin: 15px 0;
+            padding-left: 25px;
+        }
     </style>
 </head>
 
@@ -200,7 +243,23 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
         <div class="security-notice">
             <strong>Security Notice:</strong> This is a restricted area. All login attempts are monitored and logged.
+            <?php if ($ip_bypass_active): ?>
+                <br><strong>IP Bypass Active:</strong> Your IP address is in the trusted range.
+            <?php endif; ?>
         </div>
+
+        <?php if ($system_not_configured): ?>
+            <div class="setup-notice">
+                <h3>⚠️ System Not Configured</h3>
+                <p>The admin credentials have not been set up yet. Please run the setup script to configure your admin account:</p>
+                <ol>
+                    <li>Run <code>php setup.php</code> from the command line</li>
+                    <li>Or access <a href="../setup.php" style="color: #4361ee;">setup.php</a> (localhost only)</li>
+                    <li>Follow the prompts to create your admin account</li>
+                </ol>
+                <p><strong>Security Note:</strong> Delete the setup.php file after configuration.</p>
+            </div>
+        <?php else: ?>
 
         <?php if ($lockout_message): ?>
             <div class="lockout"><?php echo htmlspecialchars($lockout_message); ?></div>
@@ -209,21 +268,27 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         <?php endif; ?>
 
         <form method="post" id="login-form">
+            <input type="hidden" name="csrf_token" value="<?php echo generate_csrf_token(); ?>">
+
             <div class="input-group">
                 <label for="username">Username</label>
                 <input type="text" id="username" name="username" required autofocus autocomplete="username"
-                    value="<?php echo htmlspecialchars($_POST['username'] ?? ''); ?>" maxlength="50">
+                    value="<?php echo htmlspecialchars($_POST['username'] ?? ''); ?>" maxlength="50"
+                    <?php echo ($ip_bypass_active ? 'placeholder="Trusted IP detected"' : ''); ?>>
             </div>
 
             <div class="input-group">
                 <label for="password">Password</label>
-                <input type="password" id="password" name="password" required autocomplete="current-password">
+                <input type="password" id="password" name="password" required autocomplete="current-password"
+                    minlength="1">
             </div>
 
             <button type="submit" id="login-btn" <?php echo $lockout_message ? 'disabled' : ''; ?>>
-                Log In
+                <?php echo ($ip_bypass_active ? '🌐 Log In (IP Trusted)' : '🔐 Log In'); ?>
             </button>
         </form>
+
+        <?php endif; ?>
 
         <a href="../" class="back-link">← Return to Homepage</a>
     </div>
