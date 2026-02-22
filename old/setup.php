@@ -15,11 +15,32 @@ if (getenv('ADMIN_PASSWORD_HASH') && !empty(getenv('ADMIN_PASSWORD_HASH'))) {
 if (php_sapi_name() !== 'cli') {
     if (!isset($_SESSION)) session_start();
 
-    // Allow web access ONLY if no admin exists and from localhost
+    // For initial setup, allow web access from any IP since no admin exists yet
+    // After setup is complete, this file should be deleted or secured
     $is_localhost = in_array($_SERVER['REMOTE_ADDR'] ?? '', ['127.0.0.1', '::1', 'localhost']);
-    if (!$is_localhost) {
+
+    // Only enforce localhost restriction if this is not the initial setup
+    // Check if system already has admin configured in environment or .env file
+    $has_existing_admin = false;
+    if (file_exists(__DIR__ . '/.env')) {
+        $env_content = file_get_contents(__DIR__ . '/.env');
+        $has_existing_admin = strpos($env_content, 'ADMIN_PASSWORD_HASH=') !== false &&
+                             !empty(trim(str_replace('ADMIN_PASSWORD_HASH=', '',
+                                   preg_replace('/.*ADMIN_PASSWORD_HASH=([^\n\r]*).*/s', '$1', $env_content))));
+    }
+
+    // If admin already exists and not from localhost, block access
+    if ($has_existing_admin && !$is_localhost) {
         http_response_code(403);
-        die("Setup can only be run from localhost or command line for security.");
+        die("Setup can only be run from localhost once admin is configured. Delete this file if setup is complete.");
+    }
+
+    // Show warning for non-localhost access during initial setup
+    if (!$is_localhost) {
+        echo "<div style='background: #fff3cd; border: 1px solid #ffc107; color: #664d03; padding: 15px; margin: 20px; border-radius: 5px;'>";
+        echo "<strong>⚠️ Security Warning:</strong> You are accessing setup from a remote IP. ";
+        echo "For security, delete this setup.php file immediately after completing the setup process.";
+        echo "</div>";
     }
 
     // Web interface for initial setup
@@ -116,21 +137,24 @@ if (php_sapi_name() !== 'cli') {
                 </ul>
             </div>
 
-            <form method="POST">
+            <form method="POST" autocomplete="off">
                 <div class="form-group">
                     <label>Admin Username:</label>
                     <input type="text" name="username" value="<?= htmlspecialchars($_POST['username'] ?? 'admin') ?>" required
-                           pattern="[a-zA-Z0-9_]{3,50}" title="3-50 characters, alphanumeric and underscore only">
+                           pattern="[a-zA-Z0-9_]{3,50}" title="3-50 characters, alphanumeric and underscore only"
+                           autocomplete="username">
                 </div>
 
                 <div class="form-group">
                     <label>Admin Password:</label>
-                    <input type="password" name="password" required minlength="12">
+                    <input type="password" name="password" required minlength="12"
+                           autocomplete="new-password" placeholder="Enter a strong password">
                 </div>
 
                 <div class="form-group">
                     <label>Confirm Password:</label>
-                    <input type="password" name="password_confirm" required minlength="12">
+                    <input type="password" name="password_confirm" required minlength="12"
+                           autocomplete="new-password" placeholder="Confirm your password">
                 </div>
 
                 <button type="submit">🚀 Setup Admin Account</button>
@@ -169,7 +193,7 @@ function setup_admin_credentials($username, $password) {
     $hash = password_hash($password, PASSWORD_DEFAULT);
 
     // Try to create/update .env file
-    $env_file = __DIR__ . '/../.env';
+    $env_file = __DIR__ . '/.env';
     $env_content = [];
 
     if (file_exists($env_file)) {

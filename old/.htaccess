@@ -1,0 +1,285 @@
+# Optimized URL Routing for EdTech DOI-like Identifier System
+
+# Supports both long-form (edtechid.journal) and short-form (ej) resolution
+
+# Content negotiation and proper caching headers
+
+RewriteEngine On
+
+# Security headers for all responses
+
+Header always set X-Frame-Options "DENY"
+Header always set X-Content-Type-Options "nosniff"
+Header always set X-XSS-Protection "1; mode=block"
+Header always set Referrer-Policy "strict-origin-when-cross-origin"
+Header always set Content-Security-Policy "default-src 'self'; script-src 'self' 'unsafe-inline' challenges.cloudflare.com; style-src 'self' 'unsafe-inline'; img-src 'self' data:; frame-ancestors 'none'"
+
+# Custom error pages
+
+ErrorDocument 400 /error.php?code=400
+ErrorDocument 401 /error.php?code=401
+ErrorDocument 403 /error.php?code=403
+ErrorDocument 404 /error.php?code=404
+ErrorDocument 410 /error.php?code=410
+ErrorDocument 500 /error.php?code=500
+ErrorDocument 503 /error.php?code=503
+
+# Enable compression for better performance
+
+<IfModule mod_deflate.c>
+    AddOutputFilterByType DEFLATE text/plain
+    AddOutputFilterByType DEFLATE text/html
+    AddOutputFilterByType DEFLATE text/xml
+    AddOutputFilterByType DEFLATE text/css
+    AddOutputFilterByType DEFLATE application/xml
+    AddOutputFilterByType DEFLATE application/xhtml+xml
+    AddOutputFilterByType DEFLATE application/rss+xml
+    AddOutputFilterByType DEFLATE application/javascript
+    AddOutputFilterByType DEFLATE application/x-javascript
+    AddOutputFilterByType DEFLATE application/json
+</IfModule>
+
+# Cache headers for static resources
+
+<IfModule mod_expires.c>
+    ExpiresActive On
+    ExpiresByType text/css "access plus 1 year"
+    ExpiresByType application/javascript "access plus 1 year"
+    ExpiresByType image/png "access plus 1 year"
+    ExpiresByType image/jpg "access plus 1 year"
+    ExpiresByType image/jpeg "access plus 1 year"
+    ExpiresByType image/gif "access plus 1 year"
+    ExpiresByType image/svg+xml "access plus 1 year"
+    ExpiresByType application/pdf "access plus 1 year"
+    ExpiresByType image/x-icon "access plus 1 year"
+</IfModule>
+
+# Skip processing for real files/folders and admin area
+
+RewriteCond %{REQUEST_FILENAME} -f [OR]
+RewriteCond %{REQUEST_FILENAME} -d
+RewriteRule ^ - [L]
+
+# CORS headers for API endpoints
+
+<LocationMatch "/api">
+Header always set Access-Control-Allow-Origin "\*"
+Header always set Access-Control-Allow-Methods "GET, POST, OPTIONS"
+Header always set Access-Control-Allow-Headers "Accept, Content-Type, Authorization, X-Requested-With"
+Header always set Access-Control-Max-Age "86400"
+</LocationMatch>
+
+# Handle CORS preflight requests
+
+RewriteCond %{REQUEST_METHOD} OPTIONS
+RewriteRule ^api/ - [R=200,L]
+
+# Admin panel routing (protect admin area)
+
+RewriteRule ^admin/?$ admin/index.php [L]
+RewriteRule ^admin/login/?$ admin/login.php [L]
+RewriteRule ^admin/(.+)$ admin/$1 [L]
+
+# Public interface routing
+
+RewriteRule ^/?$ index.php [L]
+
+# =============================================================================
+
+# API ROUTING - PRIORITY 1 (Most specific first)
+
+# =============================================================================
+
+# API endpoint for specific identifier with full metadata
+
+# /api/edtechid.journal/2025.001 or /api/ej/2025.001
+
+RewriteRule ^api/(edtechid\.[a-zA-Z0-9_]+)/(.+)/?$ api.php?path=$1/$2 [L,QSA]
+RewriteRule ^api/([a-z]{1,3})/(.+)/?$ api.php?path=$1/$2 [L,QSA]
+
+# API endpoint for namespace listing
+
+# /api/edtechid.journal or /api/ej
+
+RewriteRule ^api/(edtechid\.[a-zA-Z0-9_]+)/?$ api.php?path=$1 [L,QSA]
+RewriteRule ^api/([a-z]{1,3})/?$ api.php?path=$1 [L,QSA]
+
+# API root endpoint (list all identifiers)
+
+RewriteRule ^api/?$ api.php [L,QSA]
+
+# =============================================================================
+
+# CONTENT NEGOTIATION - PRIORITY 2
+
+# =============================================================================
+
+# Handle content negotiation based on Accept header
+
+# For metadata requests (JSON, XML, BibTeX, etc.)
+
+RewriteCond %{HTTP*ACCEPT} application/json [NC]
+RewriteRule ^(edtechid\.[a-zA-Z0-9*]+)/(.+)/?$ resolve.php?id=$1/$2 [L,E=HTTP_ACCEPT:%{HTTP_ACCEPT}]
+
+RewriteCond %{HTTP*ACCEPT} application/vnd\.datacite [NC]
+RewriteRule ^(edtechid\.[a-zA-Z0-9*]+)/(.+)/?$ resolve.php?id=$1/$2 [L,E=HTTP_ACCEPT:%{HTTP_ACCEPT}]
+
+RewriteCond %{HTTP*ACCEPT} application/x-bibtex [NC]
+RewriteRule ^(edtechid\.[a-zA-Z0-9*]+)/(.+)/?$ resolve.php?id=$1/$2 [L,E=HTTP_ACCEPT:%{HTTP_ACCEPT}]
+
+# Short form content negotiation
+
+RewriteCond %{HTTP_ACCEPT} application/json [NC]
+RewriteRule ^([a-z]{1,3})/(.+)/?$ resolve.php?id=$1/$2 [L,E=HTTP_ACCEPT:%{HTTP_ACCEPT}]
+
+RewriteCond %{HTTP_ACCEPT} application/vnd\.datacite [NC]
+RewriteRule ^([a-z]{1,3})/(.+)/?$ resolve.php?id=$1/$2 [L,E=HTTP_ACCEPT:%{HTTP_ACCEPT}]
+
+RewriteCond %{HTTP_ACCEPT} application/x-bibtex [NC]
+RewriteRule ^([a-z]{1,3})/(.+)/?$ resolve.php?id=$1/$2 [L,E=HTTP_ACCEPT:%{HTTP_ACCEPT}]
+
+# =============================================================================
+
+# IDENTIFIER RESOLUTION - PRIORITY 3 (Default behavior)
+
+# =============================================================================
+
+# Long-form identifier resolution (most specific pattern)
+
+# Examples: edtechid.journal/2025.001, edtechid.dataset/research-2025
+
+RewriteRule ^(edtechid\.[a-zA-Z0-9_]+)/(.+)/?$ resolve.php?id=$1/$2 [L,QSA]
+
+# Short-form identifier resolution
+
+# Examples: ej/2025.001, ed/research-2025, ec/ai-course-101
+
+RewriteRule ^([a-z]{1,3})/(.+)/?$ resolve.php?id=$1/$2 [L,QSA]
+
+# Mixed alphanumeric namespace (flexible support)
+
+# Examples: journal123/paper-001, course_ai/module-01
+
+RewriteRule ^([a-zA-Z0-9_]+)/(.+)/?$ resolve.php?id=$1/$2 [L,QSA]
+
+# =============================================================================
+
+# LEGACY SUPPORT - PRIORITY 4 (Backward compatibility)
+
+# =============================================================================
+
+# Legacy numeric DOI-style format (10.1000/example)
+
+RewriteRule ^(\d+\.\d+)/(.+)/?$ resolve.php?id=edtechid.$1/$2 [L,QSA]
+
+# Very old format support (just numbers)
+
+RewriteRule ^(\d+)/(.+)/?$ resolve.php?id=edtechid.internal.$1/$2 [L,QSA]
+
+# =============================================================================
+
+# SPECIAL ENDPOINTS - PRIORITY 5
+
+# =============================================================================
+
+# Metadata endpoint (returns structured metadata)
+
+RewriteRule ^metadata/(edtechid\.[a-zA-Z0-9_]+)/(.+)/?$ resolve.php?id=$1/$2 [L,QSA,E=HTTP_ACCEPT:application/vnd.edtech-id+json]
+RewriteRule ^metadata/([a-z]{1,3})/(.+)/?$ resolve.php?id=$1/$2 [L,QSA,E=HTTP_ACCEPT:application/vnd.edtech-id+json]
+
+# Citation endpoint (returns formatted citations)
+
+RewriteRule ^cite/(edtechid\.[a-zA-Z0-9_]+)/(.+)/?$ resolve.php?id=$1/$2&format=citation [L,QSA]
+RewriteRule ^cite/([a-z]{1,3})/(.+)/?$ resolve.php?id=$1/$2&format=citation [L,QSA]
+
+# QR code endpoint (for generating QR codes)
+
+RewriteRule ^qr/(edtechid\.[a-zA-Z0-9_]+)/(.+)/?$ qr.php?id=$1/$2 [L,QSA]
+RewriteRule ^qr/([a-z]{1,3})/(.+)/?$ qr.php?id=$1/$2 [L,QSA]
+
+# =============================================================================
+
+# ROBOTS AND SITEMAP
+
+# =============================================================================
+
+# Robots.txt handling
+
+RewriteRule ^robots\.txt$ robots.php [L]
+
+# Dynamic sitemap
+
+RewriteRule ^sitemap\.xml$ sitemap.php [L]
+
+# =============================================================================
+
+# SECURITY MEASURES
+
+# =============================================================================
+
+# Block access to sensitive files
+
+RewriteRule ^(\.env|\.htaccess|composer\.(json|lock)|package(-lock)?\.json)$ - [F,L]
+RewriteRule ^includes/._$ - [F,L]
+RewriteRule ^admin/includes/._$ - [F,L]
+
+# Rate limiting headers (if mod_security is available)
+
+<IfModule mod_security.c>
+    SecRuleEngine On
+    SecRule REQUEST_URI "^/api/" \
+        "phase:1,id:1001,block,msg:'API Rate Limit',\
+         setvar:ip.api_counter=+1,\
+         setvar:ip.api_counter_expires=%{TIME_EPOCH}+60,\
+         setvar:!ip.api_counter_expires"
+    SecRule IP:API_COUNTER "@gt 120" \
+        "phase:1,id:1002,block,status:429,\
+         msg:'API rate limit exceeded'"
+</IfModule>
+
+# =============================================================================
+
+# CACHING AND PERFORMANCE
+
+# =============================================================================
+
+# Cache resolution responses for 1 hour (adjust as needed)
+
+<LocationMatch "^/(edtechid\.|[a-z]{1,3}/).\*">
+Header set Cache-Control "public, max-age=3600"
+Header set Vary "Accept, Accept-Encoding"
+</LocationMatch>
+
+# Cache API responses for 5 minutes
+
+<LocationMatch "^/api/">
+Header set Cache-Control "public, max-age=300"
+Header set Vary "Accept, Accept-Encoding"
+</LocationMatch>
+
+# No cache for admin area
+
+<LocationMatch "^/admin/">
+Header set Cache-Control "private, no-cache, no-store, must-revalidate"
+Header set Pragma "no-cache"
+Header set Expires "0"
+</LocationMatch>
+
+# =============================================================================
+
+# MONITORING AND ANALYTICS
+
+# =============================================================================
+
+# Log identifier resolutions for analytics
+
+<IfModule mod_log_config.c>
+    LogFormat "%h %l %u %t \"%r\" %>s %O \"%{Referer}i\" \"%{User-Agent}i\" \"%{Accept}i\" %D" identifier
+    CustomLog logs/identifier_access.log identifier env=identifier_resolution
+</IfModule>
+
+# Set environment variable for identifier requests
+
+RewriteRule ^(edtechid\.|[a-z]{1,3}/).\*$ - [E=identifier_resolution:1]
+
+# END OF OPTIMIZED ROUTING
