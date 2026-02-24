@@ -34,8 +34,11 @@ RewriteRule .* - [F,L]
 RewriteCond %{REQUEST_URI} ^/admin/?$
 RewriteRule ^admin/?$ /admin/login [R=302,L]
 
-# Allow authenticated admin access (specific admin pages)
-RewriteRule ^admin/(login|dashboard|identifiers|prefixes|bulk|prefix-debug)/?$ - [L]
+# Admin clean URLs - rewrite to .php files in admin directory
+RewriteRule ^admin/(login|dashboard|identifiers|prefixes|bulk|prefix-debug)/?$ admin/$1.php [L,QSA]
+
+# Allow direct access to admin PHP files (fallback)
+RewriteRule ^admin/([^/]+)\.php$ - [L]
 
 # Assets (CSS, JS, images) - let them load normally
 RewriteRule ^assets/ - [L]
@@ -76,13 +79,13 @@ RewriteRule ^resolve/(.+)$ resolve.php [L,QSA]
     Header always set X-XSS-Protection "1; mode=block"
     Header always set Referrer-Policy "strict-origin-when-cross-origin"
     Header always set Permissions-Policy "geolocation=(), microphone=(), camera=(), payment=(), usb=(), magnetometer=(), accelerometer=(), gyroscope=(), autoplay=(), encrypted-media=(), picture-in-picture=()"
-    
+
     # Cache policy for identifier resolutions
     <FilesMatch "resolve\.php">
         Header set Cache-Control "no-cache, must-revalidate"
         Header set X-Robots-Tag "noindex, nofollow"
     </FilesMatch>
-    
+
     # Admin area security
     <FilesMatch "^admin/">
         Header always set Cache-Control "no-cache, no-store, must-revalidate"
@@ -90,7 +93,7 @@ RewriteRule ^resolve/(.+)$ resolve.php [L,QSA]
         Header always set Expires "0"
         Header always set X-Robots-Tag "noindex, nofollow, noarchive, nosnippet"
     </FilesMatch>
-    
+
     # CORS headers for API access
     <FilesMatch "\.(php)$">
         Header add Access-Control-Allow-Origin "*"
