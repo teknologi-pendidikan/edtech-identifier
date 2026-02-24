@@ -1,31 +1,60 @@
 # EdTech Identifier System - URL Rewriting Rules
-# Enables clean identifier resolution URLs
+# Enables clean identifier resolution URLs with enhanced security
 
 RewriteEngine On
 
-# Security: Block access to sensitive files
-<FilesMatch "\.(md|sql|zip)$">
+# Enhanced Security: Block access to sensitive files and directories
+<FilesMatch "\.(md|sql|zip|log|txt|bak|backup|old|orig|save|swp|tmp|conf|ini|env|git.*|htaccess|htpasswd)$">
     Order deny,allow
     Deny from all
 </FilesMatch>
 
-# Block access to includes directory
-RewriteRule ^includes/ - [F,L]
+# Block access to sensitive directories
+RewriteRule ^(includes|config|logs|backups|tmp|temp|cache|\.git|\.svn|old)/ - [F,L]
 
-# Block access to old directory  
-RewriteRule ^old/ - [F,L]
+# Block common attack patterns
+RewriteCond %{QUERY_STRING} (\<|%3C).*script.*(\>|%3E) [NC,OR]
+RewriteCond %{QUERY_STRING} GLOBALS(=|\[|\%[0-9A-Z]{0,2}) [OR]
+RewriteCond %{QUERY_STRING} _REQUEST(=|\[|\%[0-9A-Z]{0,2}) [OR]
+RewriteCond %{QUERY_STRING} proc/self/environ [OR]
+RewriteCond %{QUERY_STRING} mosConfig_[a-zA-Z_]{1,21}(=|\%3D) [OR]
+RewriteCond %{QUERY_STRING} base64_encode.*\(.*\) [OR]
+RewriteCond %{QUERY_STRING} (\<|%3C).*iframe.*(\>|%3E) [NC]
+RewriteRule .* - [F,L]
 
-# Admin area - let it handle normally
-RewriteRule ^admin/ - [L]
+# Cloudflare Zero Trust Integration
+# Trust Cloudflare IPs and headers
+<IfModule mod_setenvif.c>
+    # Set environment variable if request is from Cloudflare
+    SetEnvIf CF-Ray .+ CLOUDFLARE_REQUEST
+    SetEnvIf CF-Access-Authenticated-User-Email .+ CLOUDFLARE_AUTH
+</IfModule>
+
+# Admin area security - redirect to login if not authenticated
+RewriteCond %{REQUEST_URI} ^/admin/?$
+RewriteRule ^admin/?$ /admin/login [R=302,L]
+
+# Allow authenticated admin access (specific admin pages)
+RewriteRule ^admin/(login|dashboard|identifiers|prefixes|bulk|prefix-debug)/?$ - [L]
 
 # Assets (CSS, JS, images) - let them load normally
 RewriteRule ^assets/ - [L]
 
-# Debug and test files - let them load normally
-RewriteRule ^(debug|test-identifiers|direct-test|prefix-test)\.php$ - [L]
+# Clean URLs - Remove .php extension
+# Handle requests without .php extension by internally rewriting to .php
+RewriteCond %{REQUEST_FILENAME} !-f
+RewriteCond %{REQUEST_FILENAME} !-d
+RewriteCond %{DOCUMENT_ROOT}/$1.php -f
+RewriteRule ^([^/]+)/?$ $1.php [L,QSA]
 
-# Main site files - let them load normally
-RewriteRule ^(index|resolve)\.php$ - [L]
+# Debug and test files - accessible with clean URLs
+RewriteRule ^(debug|test-identifiers|direct-test|prefix-test)/?$ $1.php [L,QSA]
+
+# Main site files - clean URLs
+RewriteRule ^(index|resolve)/?$ $1.php [L,QSA]
+
+# Root redirect to index
+RewriteRule ^$ index.php [L]
 
 # Direct identifier resolution
 # Pattern: domain.tld/prefix/suffix -> resolve.php
@@ -39,27 +68,51 @@ RewriteRule ^([a-zA-Z0-9\.]+)/(.+)$ resolve.php [L,QSA]
 # Fallback: if someone visits /resolve/identifier
 RewriteRule ^resolve/(.+)$ resolve.php [L,QSA]
 
-# Optional: Redirect root to main interface
-# RewriteRule ^$ index.php [L]
-
-# Add proper headers for identifier resolution
+# Enhanced security headers and caching
 <IfModule mod_headers.c>
+    # Security headers for all pages
+    Header always set X-Content-Type-Options "nosniff"
+    Header always set X-Frame-Options "SAMEORIGIN"
+    Header always set X-XSS-Protection "1; mode=block"
+    Header always set Referrer-Policy "strict-origin-when-cross-origin"
+    Header always set Permissions-Policy "geolocation=(), microphone=(), camera=(), payment=(), usb=(), magnetometer=(), accelerometer=(), gyroscope=(), autoplay=(), encrypted-media=(), picture-in-picture=()"
+    
     # Cache policy for identifier resolutions
     <FilesMatch "resolve\.php">
         Header set Cache-Control "no-cache, must-revalidate"
         Header set X-Robots-Tag "noindex, nofollow"
     </FilesMatch>
     
-    # Add CORS headers if needed for API access
+    # Admin area security
+    <FilesMatch "^admin/">
+        Header always set Cache-Control "no-cache, no-store, must-revalidate"
+        Header always set Pragma "no-cache"
+        Header always set Expires "0"
+        Header always set X-Robots-Tag "noindex, nofollow, noarchive, nosnippet"
+    </FilesMatch>
+    
+    # CORS headers for API access
     <FilesMatch "\.(php)$">
         Header add Access-Control-Allow-Origin "*"
         Header add Access-Control-Allow-Headers "Content-Type"
+        Header add Access-Control-Allow-Methods "GET, POST, OPTIONS"
     </FilesMatch>
 </IfModule>
 
-# Optional: Force HTTPS (uncomment if using SSL)
+# Force HTTPS for security (uncomment if using SSL)
 # RewriteCond %{HTTPS} off
 # RewriteRule ^(.*)$ https://%{HTTP_HOST}%{REQUEST_URI} [L,R=301]
+
+# Content Security Policy
+<IfModule mod_headers.c>
+    # Basic CSP to prevent XSS attacks
+    Header always set Content-Security-Policy "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; font-src 'self' data:; connect-src 'self'; frame-ancestors 'self';"
+</IfModule>
+
+# Block server signature information
+ServerTokens Prod
+Header unset Server
+Header unset X-Powered-By
 
 # Add proper MIME types
 <IfModule mod_mime.c>
